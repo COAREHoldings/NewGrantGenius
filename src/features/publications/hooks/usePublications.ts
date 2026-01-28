@@ -145,6 +145,12 @@ export function usePublications() {
     return result;
   }, [callApi]);
 
+  const findJournalFit = useCallback(async (manuscript: { title: string; abstract: string; keywords: string[] }) => {
+    const result = await callApi('journal-fit', { manuscript });
+    setState(prev => ({ ...prev, loading: false }));
+    return result;
+  }, [callApi]);
+
   const createManuscript = useCallback(async (manuscript: Omit<Manuscript, 'id' | 'createdAt' | 'updatedAt'>) => {
     const saved = await callApi('save-manuscript', { manuscript });
     setState(prev => ({
@@ -190,6 +196,7 @@ export function usePublications() {
     generateCoverLetter,
     generateRevisionResponse,
     buildProfile,
+    findJournalFit,
     createManuscript,
     updateManuscript,
     setCurrentManuscript,

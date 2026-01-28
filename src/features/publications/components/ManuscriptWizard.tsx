@@ -4,8 +4,21 @@ import { useState } from 'react';
 import type { Manuscript, ManuscriptContent } from '../types';
 import LiteratureHelper from './LiteratureHelper';
 import JournalChecker from './JournalChecker';
+import JournalFitPanel from './JournalFitPanel';
 import CoverLetterGen from './CoverLetterGen';
 import type { LiteratureGap, JournalCheckResult } from '../types';
+
+interface JournalFitScore {
+  journalName: string;
+  overallScore: number;
+  scopeMatch: number;
+  impactScore: number;
+  acceptanceChance: number;
+  timeToDecision: number;
+  openAccess: boolean;
+  impactFactor: number;
+  reasoning: string;
+}
 
 interface Props {
   manuscript: Manuscript | null;
@@ -13,6 +26,7 @@ interface Props {
   onCreate: (manuscript: Omit<Manuscript, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Manuscript> | void;
   onFindGaps: (abstract: string, researchArea: string) => Promise<{ gaps: LiteratureGap[] }>;
   onCheckJournal: (manuscript: { title: string; abstract: string; wordCount?: number }, targetJournal: string) => Promise<JournalCheckResult>;
+  onFindJournalFit: (manuscript: { title: string; abstract: string; keywords: string[] }) => Promise<{ rankings: JournalFitScore[] }>;
   onGenerateCoverLetter: (manuscript: { title: string; abstract: string; highlights?: string[] }, journal: string) => Promise<{ coverLetter: string; wordCount: number }>;
   loading: boolean;
 }
@@ -21,8 +35,9 @@ const STEPS = [
   { id: 1, name: 'Setup', description: 'Basic information' },
   { id: 2, name: 'Literature', description: 'Gap analysis' },
   { id: 3, name: 'IMRAD', description: 'Write sections' },
-  { id: 4, name: 'Journal', description: 'Compliance check' },
-  { id: 5, name: 'Submit', description: 'Cover letter' },
+  { id: 4, name: 'Find Journal', description: 'Best fit analysis' },
+  { id: 5, name: 'Compliance', description: 'Journal check' },
+  { id: 6, name: 'Submit', description: 'Cover letter' },
 ];
 
 export default function ManuscriptWizard({
@@ -31,6 +46,7 @@ export default function ManuscriptWizard({
   onCreate,
   onFindGaps,
   onCheckJournal,
+  onFindJournalFit,
   onGenerateCoverLetter,
   loading,
 }: Props) {
@@ -157,10 +173,14 @@ export default function ManuscriptWizard({
         )}
 
         {step === 4 && (
-          <JournalChecker onCheckJournal={onCheckJournal} loading={loading} />
+          <JournalFitPanel onFindFit={onFindJournalFit} loading={loading} />
         )}
 
         {step === 5 && (
+          <JournalChecker onCheckJournal={onCheckJournal} loading={loading} />
+        )}
+
+        {step === 6 && (
           <CoverLetterGen onGenerate={onGenerateCoverLetter} loading={loading} />
         )}
       </div>
@@ -181,9 +201,9 @@ export default function ManuscriptWizard({
           >
             Save Draft
           </button>
-          {step < 5 ? (
+          {step < 6 ? (
             <button
-              onClick={() => setStep(s => Math.min(5, s + 1))}
+              onClick={() => setStep(s => Math.min(6, s + 1))}
               className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
             >
               Next

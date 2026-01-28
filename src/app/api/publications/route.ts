@@ -106,6 +106,8 @@ export async function POST(request: NextRequest) {
         return handleRevisionResponse(data.comments, data.manuscriptChanges);
       case 'build-profile':
         return handleBuildProfile(db, userId);
+      case 'journal-fit':
+        return handleJournalFit(data.manuscript);
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
@@ -395,4 +397,54 @@ async function handleBuildProfile(db: ReturnType<typeof getDb>, userId: number) 
     const result = await db.insert(researchProfiles).values(profileData).returning();
     return NextResponse.json(result[0]);
   }
+}
+
+
+async function handleJournalFit(manuscript: { title: string; abstract: string; keywords: string[] }) {
+  const { JOURNALS } = await import('@/features/publications/data/journals');
+  
+  const completion = await getOpenAI().chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a journal selection expert. Given a manuscript and a list of journals, score each journal's fit.
+Return JSON with "rankings" array of objects with:
+- journalName: string
+- overallScore: number (0-100)
+- scopeMatch: number (0-100)
+- impactScore: number (0-100)
+- acceptanceChance: number (0-100)
+- reasoning: string (1-2 sentences)
+
+Consider: research topic alignment, manuscript quality indicators from abstract, journal scope, and realistic acceptance odds.
+Return top 5 journals sorted by overallScore descending.`,
+      },
+      {
+        role: 'user',
+        content: `Manuscript Title: ${manuscript.title}
+Abstract: ${manuscript.abstract}
+Keywords: ${manuscript.keywords.join(', ')}
+
+Available Journals:
+${JOURNALS.map(j => `- ${j.name}: IF=${j.impactFactor}, Acceptance=${j.acceptanceRate}%, Categories=[${j.categories.join(', ')}], OpenAccess=${j.openAccess}`).join('\n')}`,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  });
+
+  const result = JSON.parse(completion.choices[0].message.content || '{"rankings":[]}');
+  
+  // Enrich with journal data
+  const rankings = result.rankings.map((r: { journalName: string; overallScore: number; scopeMatch: number; impactScore: number; acceptanceChance: number; reasoning: string }) => {
+    const journal = JOURNALS.find(j => j.name.toLowerCase() === r.journalName.toLowerCase());
+    return {
+      ...r,
+      impactFactor: journal?.impactFactor || 0,
+      openAccess: journal?.openAccess || false,
+      timeToDecision: journal?.reviewTime || 90,
+    };
+  });
+
+  return NextResponse.json({ rankings });
 }

@@ -21,6 +21,7 @@ export default function PublicationsHub() {
     buildProfile,
     findLiteratureGaps,
     checkJournal,
+    findJournalFit,
     generateCoverLetter,
     generateRevisionResponse,
     createManuscript,
@@ -162,6 +163,7 @@ export default function PublicationsHub() {
             onCreate={createManuscript}
             onFindGaps={findLiteratureGaps}
             onCheckJournal={checkJournal}
+            onFindJournalFit={findJournalFit}
             onGenerateCoverLetter={generateCoverLetter}
             loading={state.loading}
           />

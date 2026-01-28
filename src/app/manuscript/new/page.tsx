@@ -15,6 +15,7 @@ export default function NewManuscriptPage() {
     updateManuscript,
     findLiteratureGaps,
     checkJournal,
+    findJournalFit,
     generateCoverLetter,
   } = usePublications();
 
@@ -31,6 +32,7 @@ export default function NewManuscriptPage() {
             onCreate={createManuscript}
             onFindGaps={findLiteratureGaps}
             onCheckJournal={checkJournal}
+            onFindJournalFit={findJournalFit}
             onGenerateCoverLetter={generateCoverLetter}
             loading={state.loading}
           />
