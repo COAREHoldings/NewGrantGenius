@@ -18,7 +18,7 @@ interface AIMEditorProps {
   maxAims?: number;
 }
 
-export default function AIMEditor({ aims, onChange, maxAims = 4 }: AIMEditorProps) {
+export default function AIMEditor({ aims, onChange, maxAims = 10 }: AIMEditorProps) {
   const [expandedAim, setExpandedAim] = useState<string | null>(aims[0]?.id || null);
 
   const addAim = () => {
