@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { CheckCircle, AlertCircle, FileText, AlertTriangle, Plus, Trash2, GripVertical } from 'lucide-react';
 import AISuggestions from './AISuggestions';
+import VersionHistory from './VersionHistory';
 import { debounce } from '@/lib/utils';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { ssr: false });
@@ -366,6 +367,15 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative',
           onAccept={(original, suggested) => {
             const newContent = content.replace(original, suggested);
             handleChange(newContent);
+          }}
+        />
+
+        <VersionHistory
+          sectionId={section.id}
+          currentContent={content}
+          onRestore={(restoredContent) => {
+            setContent(restoredContent);
+            setPageCount(estimatePages(restoredContent));
           }}
         />
       </div>

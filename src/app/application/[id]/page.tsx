@@ -9,6 +9,7 @@ import AttachmentChecklist from '@/components/AttachmentChecklist';
 import ValidationPanel from '@/components/ValidationPanel';
 import ReviewerSimulation from '@/components/ReviewerSimulation';
 import StudySectionRecommender from '@/components/StudySectionRecommender';
+import Collaborators from '@/components/Collaborators';
 import { MECHANISMS, getFormatting } from '@/lib/mechanisms';
 import { ArrowLeft, FileText, Info, Users } from 'lucide-react';
 import Link from 'next/link';
@@ -226,6 +227,11 @@ function ApplicationContent() {
               title={application.title}
               specificAims={sections.find(s => s.type === 'specific_aims')?.content || ''}
               researchStrategy={sections.find(s => s.type === 'research_strategy')?.content || ''}
+            />
+
+            <Collaborators
+              applicationId={application.id}
+              isOwner={true}
             />
           </div>
 
