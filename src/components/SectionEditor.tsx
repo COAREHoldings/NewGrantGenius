@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { CheckCircle, AlertCircle, FileText, AlertTriangle, Plus, Trash2, GripVertical } from 'lucide-react';
+import AISuggestions from './AISuggestions';
 import { debounce } from '@/lib/utils';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { ssr: false });
@@ -32,6 +33,7 @@ interface Props {
   section: Section;
   onUpdate: () => void;
   format?: 'narrative' | 'milestone';
+  grantType?: string;
 }
 
 // Strip HTML tags for text analysis
@@ -51,7 +53,7 @@ function parseMilestones(content: string): Milestone[] {
   return [{ id: '1', task: '', subtasks: [''], deliverable: '', timeline: '' }];
 }
 
-export default function SectionEditor({ section, onUpdate, format = 'narrative' }: Props) {
+export default function SectionEditor({ section, onUpdate, format = 'narrative', grantType = 'Grant' }: Props) {
   const { token } = useAuth();
   const [content, setContent] = useState(section.content || '');
   const [milestones, setMilestones] = useState<Milestone[]>(() => 
@@ -346,7 +348,7 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative' 
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-4 space-y-4">
         <RichTextEditor
           content={content}
           onChange={handleChange}
@@ -355,6 +357,16 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative' 
               ? `\n\nInclude the following headings:\n${section.required_headings.map(h => `- ${h}`).join('\n')}`
               : ''
           }`}
+        />
+        
+        <AISuggestions
+          content={stripHtml(content)}
+          sectionType={section.title}
+          grantType={grantType}
+          onAccept={(original, suggested) => {
+            const newContent = content.replace(original, suggested);
+            handleChange(newContent);
+          }}
         />
       </div>
 
