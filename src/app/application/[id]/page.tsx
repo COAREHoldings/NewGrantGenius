@@ -8,7 +8,7 @@ import SectionEditor from '@/components/SectionEditor';
 import AttachmentChecklist from '@/components/AttachmentChecklist';
 import ValidationPanel from '@/components/ValidationPanel';
 import ReviewerSimulation from '@/components/ReviewerSimulation';
-import { MECHANISMS, NIH_FORMATTING } from '@/lib/mechanisms';
+import { MECHANISMS, getFormatting } from '@/lib/mechanisms';
 import { ArrowLeft, FileText, Info, Users } from 'lucide-react';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
@@ -121,6 +121,12 @@ function ApplicationContent() {
 
   const mechanism = MECHANISMS[application.mechanism];
   const currentSection = sections.find(s => s.id === activeSection);
+  const formatting = mechanism ? getFormatting(mechanism.agency) : getFormatting('NIH');
+  const getSectionFormat = (sectionType: string) => {
+    if (!mechanism) return 'narrative';
+    const sectionConfig = mechanism.sections.find(s => s.type === sectionType);
+    return sectionConfig?.format || 'narrative';
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -165,11 +171,11 @@ function ApplicationContent() {
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-indigo-800">
-              <p className="font-medium">NIH Formatting Requirements</p>
+              <p className="font-medium">{mechanism?.agency || 'NIH'} Formatting Requirements</p>
               <p className="mt-1">
-                Font: {NIH_FORMATTING.font} {NIH_FORMATTING.fontSize}pt | 
-                Margins: {NIH_FORMATTING.margins} | 
-                Line Spacing: {NIH_FORMATTING.lineSpacing}
+                Font: {formatting.font} {formatting.fontSize}pt | 
+                Margins: {formatting.margins} | 
+                Line Spacing: {formatting.lineSpacing}
               </p>
             </div>
           </div>
@@ -222,6 +228,7 @@ function ApplicationContent() {
                 key={currentSection.id}
                 section={currentSection}
                 onUpdate={fetchApplication}
+                format={getSectionFormat(currentSection.type)}
               />
             )}
           </div>

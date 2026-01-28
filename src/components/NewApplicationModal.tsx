@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { MECHANISMS } from '@/lib/mechanisms';
-import { Plus, X, FileText, Info } from 'lucide-react';
+import { FUNDING_AGENCIES, getAgencyMechanisms, AgencyType } from '@/lib/mechanisms';
+import { Plus, X, FileText, Info, ChevronLeft } from 'lucide-react';
 
 interface Props {
   onCreated: () => void;
@@ -13,9 +13,13 @@ export default function NewApplicationModal({ onCreated }: Props) {
   const { token } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [agency, setAgency] = useState<AgencyType | ''>('');
   const [mechanism, setMechanism] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const agencyMechanisms = agency ? getAgencyMechanisms(agency) : [];
+  const selectedMech = mechanism ? agencyMechanisms.find(m => m.id === mechanism) : null;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +41,7 @@ export default function NewApplicationModal({ onCreated }: Props) {
       if (!res.ok) throw new Error('Failed to create application');
       setIsOpen(false);
       setTitle('');
+      setAgency('');
       setMechanism('');
       onCreated();
     } catch (err) {
@@ -46,7 +51,13 @@ export default function NewApplicationModal({ onCreated }: Props) {
     }
   };
 
-  const selectedMech = mechanism ? MECHANISMS[mechanism] : null;
+  const handleClose = () => {
+    setIsOpen(false);
+    setTitle('');
+    setAgency('');
+    setMechanism('');
+    setError('');
+  };
 
   return (
     <>
@@ -63,7 +74,7 @@ export default function NewApplicationModal({ onCreated }: Props) {
           <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-900">Create New Grant Application</h2>
-              <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={handleClose} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -81,34 +92,80 @@ export default function NewApplicationModal({ onCreated }: Props) {
                 />
               </div>
 
+              {/* Step 1: Agency Selection */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Select Grant Mechanism</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">1. Select Funding Agency</label>
                 <div className="grid gap-2">
-                  {Object.values(MECHANISMS).map(mech => (
+                  {Object.values(FUNDING_AGENCIES).map(ag => (
                     <label
-                      key={mech.id}
+                      key={ag.id}
                       className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
-                        mechanism === mech.id
+                        agency === ag.id
                           ? 'border-indigo-500 bg-indigo-50'
                           : 'border-slate-200 hover:border-slate-300'
                       }`}
                     >
                       <input
                         type="radio"
-                        name="mechanism"
-                        value={mech.id}
-                        checked={mechanism === mech.id}
-                        onChange={e => setMechanism(e.target.value)}
+                        name="agency"
+                        value={ag.id}
+                        checked={agency === ag.id}
+                        onChange={e => {
+                          setAgency(e.target.value as AgencyType);
+                          setMechanism('');
+                        }}
                         className="mt-1"
                       />
                       <div>
-                        <div className="font-medium text-slate-900">{mech.name}</div>
-                        <div className="text-sm text-slate-600">{mech.description}</div>
+                        <div className="font-medium text-slate-900">{ag.name}</div>
+                        <div className="text-sm text-slate-600">{ag.description}</div>
                       </div>
                     </label>
                   ))}
                 </div>
               </div>
+
+              {/* Step 2: Mechanism Selection */}
+              {agency && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => { setAgency(''); setMechanism(''); }}
+                      className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Change Agency
+                    </button>
+                  </div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">2. Select Grant Mechanism</label>
+                  <div className="grid gap-2 max-h-64 overflow-y-auto">
+                    {agencyMechanisms.map(mech => (
+                      <label
+                        key={mech.id}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
+                          mechanism === mech.id
+                            ? 'border-indigo-500 bg-indigo-50'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="mechanism"
+                          value={mech.id}
+                          checked={mechanism === mech.id}
+                          onChange={e => setMechanism(e.target.value)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <div className="font-medium text-slate-900">{mech.name}</div>
+                          <div className="text-sm text-slate-600">{mech.description}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {selectedMech && (
                 <div className="bg-slate-50 rounded-lg p-4">
@@ -123,7 +180,7 @@ export default function NewApplicationModal({ onCreated }: Props) {
                         {selectedMech.sections.map(sec => (
                           <li key={sec.type} className="flex items-center gap-2">
                             <FileText className="w-3 h-3 text-slate-400" />
-                            {sec.title} ({sec.pageLimit} page{sec.pageLimit > 1 ? 's' : ''} max)
+                            {sec.title} ({sec.pageLimit === 0 ? 'No limit' : `${sec.pageLimit} page${sec.pageLimit > 1 ? 's' : ''} max`})
                           </li>
                         ))}
                       </ul>
@@ -142,7 +199,7 @@ export default function NewApplicationModal({ onCreated }: Props) {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleClose}
                   className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition"
                 >
                   Cancel
