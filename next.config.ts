@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  // Turbopack configuration - use absolute path
   turbopack: {
     root: "/workspace/coare-grant-master",
   },
