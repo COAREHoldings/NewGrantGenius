@@ -13,6 +13,11 @@ import Collaborators from '@/components/Collaborators';
 import BiosketchGenerator from '@/components/BiosketchGenerator';
 import IdeaLab from '@/components/IdeaLab';
 import CREDashboard from '@/components/CREDashboard';
+import StatisticalAdequacy from '@/components/StatisticalAdequacy';
+import MechanisticDepth from '@/components/MechanisticDepth';
+import FeasibilityAnalyzer from '@/components/FeasibilityAnalyzer';
+import NoveltyRisk from '@/components/NoveltyRisk';
+import ReadinessStatusBar from '@/components/ReadinessStatusBar';
 import { MECHANISMS, getFormatting } from '@/lib/mechanisms';
 import { ArrowLeft, FileText, Info, Users } from 'lucide-react';
 import Link from 'next/link';
@@ -55,6 +60,8 @@ function ApplicationContent() {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [showReview, setShowReview] = useState(false);
+  const [creStatus, setCreStatus] = useState<'draft' | 'at_risk' | 'needs_revision' | 'competitive'>('draft');
+  const [creScore, setCreScore] = useState<number | undefined>(undefined);
 
   const fetchApplication = useCallback(async () => {
     if (!token || !params.id) return;
@@ -172,7 +179,9 @@ function ApplicationContent() {
           </div>
         </div>
 
-        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+        <ReadinessStatusBar status={creStatus} score={creScore} />
+
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6 mt-4">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-indigo-800">
@@ -242,6 +251,17 @@ function ApplicationContent() {
               title={application.title}
               specificAims={sections.find(s => s.type === 'specific_aims')?.content || ''}
               researchStrategy={sections.find(s => s.type === 'research_strategy')?.content || ''}
+            />
+
+            <NoveltyRisk
+              title={application.title}
+              content={sections.find(s => s.type === 'specific_aims')?.content || ''}
+            />
+
+            <FeasibilityAnalyzer
+              specificAims={sections.find(s => s.type === 'specific_aims')?.content || ''}
+              researchStrategy={sections.find(s => s.type === 'research_strategy')?.content || ''}
+            />
 
             <Collaborators
               applicationId={application.id}
