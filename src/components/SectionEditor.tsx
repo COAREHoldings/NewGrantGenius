@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckCircle, AlertCircle, FileText, AlertTriangle, Plus, Trash2, GripVertical } from 'lucide-react';
+import { CheckCircle, AlertCircle, FileText, AlertTriangle, Plus, Trash2, GripVertical, Upload } from 'lucide-react';
 import AISuggestions from './AISuggestions';
+import AICritique from './AICritique';
+import AIMEditor, { Aim, aimsToContent, contentToAims } from './AIMEditor';
+import PDFUploader from './PDFUploader';
 import VersionHistory from './VersionHistory';
 import { debounce } from '@/lib/utils';
 
@@ -54,14 +57,27 @@ function parseMilestones(content: string): Milestone[] {
   return [{ id: '1', task: '', subtasks: [''], deliverable: '', timeline: '' }];
 }
 
+// Sections that should show AI Critique
+const CRITIQUE_ENABLED_SECTIONS = ['specific_aims', 'research_strategy', 'commercialization', 'commercialization_plan'];
+
 export default function SectionEditor({ section, onUpdate, format = 'narrative', grantType = 'Grant' }: Props) {
   const { token } = useAuth();
   const [content, setContent] = useState(section.content || '');
   const [milestones, setMilestones] = useState<Milestone[]>(() => 
     format === 'milestone' ? parseMilestones(section.content || '') : []
   );
+  const [aims, setAims] = useState<Aim[]>(() => 
+    section.type === 'specific_aims' ? contentToAims(section.content || '') : []
+  );
   const [saving, setSaving] = useState(false);
   const [pageCount, setPageCount] = useState(section.page_count || 0);
+  const [showPDFUpload, setShowPDFUpload] = useState(false);
+  const [editorMode, setEditorMode] = useState<'structured' | 'freeform'>(
+    section.type === 'specific_aims' ? 'structured' : 'freeform'
+  );
+
+  const showCritique = CRITIQUE_ENABLED_SECTIONS.includes(section.type);
+  const isSpecificAims = section.type === 'specific_aims';
 
   const estimatePages = (html: string) => {
     if (!html) return 0;
@@ -102,6 +118,32 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative',
     setContent(newContent);
     setPageCount(estimatePages(newContent));
     saveContent(newContent);
+  };
+
+  const handleAimsChange = (newAims: Aim[]) => {
+    setAims(newAims);
+    const htmlContent = aimsToContent(newAims);
+    setContent(htmlContent);
+    setPageCount(estimatePages(htmlContent));
+    saveContent(htmlContent);
+  };
+
+  const handlePDFParsed = (parsedAims: Aim[], fullText: string) => {
+    setAims(parsedAims);
+    const htmlContent = aimsToContent(parsedAims);
+    setContent(htmlContent);
+    setPageCount(estimatePages(htmlContent));
+    saveContent(htmlContent);
+    setShowPDFUpload(false);
+  };
+
+  const handleAcceptRewrite = (newContent: string) => {
+    // Convert plain text rewrite to HTML paragraphs
+    const htmlContent = newContent
+      .split('\n\n')
+      .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+      .join('\n');
+    handleChange(htmlContent);
   };
 
   const handleMilestoneChange = (newMilestones: Milestone[]) => {
@@ -152,7 +194,7 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative',
     ));
   };
 
-  const plainText = typeof window !== 'undefined' ? stripHtml(content) : content;
+  const plainText = useMemo(() => typeof window !== 'undefined' ? stripHtml(content) : content, [content]);
   const isOverLimit = section.page_limit > 0 && pageCount > section.page_limit;
   const missingHeadings = section.required_headings?.filter(
     h => !plainText.toLowerCase().includes(h.toLowerCase())
@@ -292,7 +334,7 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative',
     );
   }
 
-  // Standard narrative editor
+  // Standard narrative editor with enhancements for Specific Aims
   return (
     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
       <div className="p-4 border-b border-slate-200 bg-slate-50">
@@ -308,6 +350,15 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative',
           </div>
           <div className="flex items-center gap-3">
             {saving && <span className="text-sm text-slate-500">Saving...</span>}
+            {isSpecificAims && (
+              <button
+                onClick={() => setShowPDFUpload(!showPDFUpload)}
+                className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 flex items-center gap-1"
+              >
+                <Upload className="w-4 h-4" />
+                Upload PDF
+              </button>
+            )}
             {section.page_limit > 0 && (
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm ${
                 isOverLimit
@@ -326,6 +377,35 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative',
             )}
           </div>
         </div>
+
+        {/* Mode Toggle for Specific Aims */}
+        {isSpecificAims && (
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-xs text-slate-500">Editor mode:</span>
+            <div className="flex rounded-md overflow-hidden border border-slate-200">
+              <button
+                onClick={() => setEditorMode('structured')}
+                className={`px-3 py-1 text-xs ${
+                  editorMode === 'structured' 
+                    ? 'bg-indigo-600 text-white' 
+                    : 'bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Structured (Aims)
+              </button>
+              <button
+                onClick={() => setEditorMode('freeform')}
+                className={`px-3 py-1 text-xs ${
+                  editorMode === 'freeform' 
+                    ? 'bg-indigo-600 text-white' 
+                    : 'bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Freeform
+              </button>
+            </div>
+          </div>
+        )}
 
         {section.required_headings && section.required_headings.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -350,18 +430,48 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative',
       </div>
 
       <div className="p-4 space-y-4">
-        <RichTextEditor
-          content={content}
-          onChange={handleChange}
-          placeholder={`Start writing your ${section.title} section here...${
-            section.required_headings?.length
-              ? `\n\nInclude the following headings:\n${section.required_headings.map(h => `- ${h}`).join('\n')}`
-              : ''
-          }`}
-        />
+        {/* PDF Uploader */}
+        {showPDFUpload && isSpecificAims && (
+          <PDFUploader
+            onParsed={handlePDFParsed}
+          />
+        )}
+
+        {/* Structured AIM Editor for Specific Aims */}
+        {isSpecificAims && editorMode === 'structured' && (
+          <AIMEditor
+            aims={aims}
+            onChange={handleAimsChange}
+            maxAims={4}
+          />
+        )}
+
+        {/* Freeform Rich Text Editor */}
+        {(!isSpecificAims || editorMode === 'freeform') && (
+          <RichTextEditor
+            content={content}
+            onChange={handleChange}
+            placeholder={`Start writing your ${section.title} section here...${
+              section.required_headings?.length
+                ? `\n\nInclude the following headings:\n${section.required_headings.map(h => `- ${h}`).join('\n')}`
+                : ''
+            }`}
+          />
+        )}
         
+        {/* AI Critique for eligible sections */}
+        {showCritique && (
+          <AICritique
+            content={plainText}
+            sectionType={section.title}
+            grantType={grantType}
+            onAcceptRewrite={handleAcceptRewrite}
+          />
+        )}
+
+        {/* Standard AI Suggestions */}
         <AISuggestions
-          content={stripHtml(content)}
+          content={plainText}
           sectionType={section.title}
           grantType={grantType}
           onAccept={(original, suggested) => {
@@ -376,6 +486,9 @@ export default function SectionEditor({ section, onUpdate, format = 'narrative',
           onRestore={(restoredContent) => {
             setContent(restoredContent);
             setPageCount(estimatePages(restoredContent));
+            if (isSpecificAims) {
+              setAims(contentToAims(restoredContent));
+            }
           }}
         />
       </div>
