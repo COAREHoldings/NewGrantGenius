@@ -2,7 +2,11 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { FileText, LogIn, UserPlus, X, Loader2, Mail } from 'lucide-react';
+import { FileText, LogIn, UserPlus, X, Loader2, Mail, Check, AlertCircle } from 'lucide-react';
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 interface PasswordStrength {
   score: number;
@@ -38,6 +42,9 @@ export default function AuthForm() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+
+  const emailValid = useMemo(() => isValidEmail(email), [email]);
 
   useEffect(() => {
     setMounted(true);
@@ -130,13 +137,34 @@ export default function AuthForm() {
             )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full px-3 py-2.5 sm:py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base sm:text-sm"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onBlur={() => setEmailTouched(true)}
+                  className={`w-full px-3 py-2.5 sm:py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 text-base sm:text-sm pr-10 transition-colors ${
+                    emailTouched && email
+                      ? emailValid
+                        ? 'border-green-500 focus:border-green-500'
+                        : 'border-red-500 focus:border-red-500'
+                      : 'border-slate-300 focus:border-indigo-500'
+                  }`}
+                  required
+                />
+                {emailTouched && email && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {emailValid ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                    )}
+                  </div>
+                )}
+              </div>
+              {emailTouched && email && !emailValid && (
+                <p className="text-xs text-red-500 mt-1">Please enter a valid email address</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
