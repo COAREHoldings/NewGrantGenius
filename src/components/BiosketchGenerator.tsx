@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { User, Loader2, Copy, Check, X, Download, FileText, Upload, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import ExportMenu from './ExportMenu';
 
 interface Props {
   projectTitle?: string;
@@ -349,13 +350,16 @@ export default function BiosketchGenerator({ projectTitle, onClose, isOpen }: Pr
                       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       {copied ? 'Copied!' : 'Copy'}
                     </button>
-                    <button
-                      onClick={handleDownload}
-                      className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center gap-1"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
-                    </button>
+                    <ExportMenu
+                      title={`NIH_Biosketch_${formData.name.replace(/\s+/g, '_')}`}
+                      sections={[{ heading: 'NIH Biosketch', content: biosketch }]}
+                      metadata={{
+                        author: formData.name,
+                        date: new Date().toLocaleDateString(),
+                        type: 'NIH Biosketch',
+                      }}
+                      buttonClassName="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center gap-1"
+                    />
                   </div>
                 </div>
                 

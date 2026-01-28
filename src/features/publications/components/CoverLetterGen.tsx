@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Copy, Check, Download, Mail } from 'lucide-react';
+import { Loader2, Copy, Check, Mail } from 'lucide-react';
+import ExportMenu from '@/components/ExportMenu';
 
 interface Props {
   onGenerate: (manuscript: { title: string; abstract: string; highlights?: string[] }, journal: string) => Promise<{ coverLetter: string; wordCount: number }>;
@@ -113,7 +114,7 @@ export default function CoverLetterGen({ onGenerate, loading }: Props) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-medium text-slate-900">Generated Cover Letter</h4>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <button
                 onClick={handleCopy}
                 className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
@@ -121,13 +122,15 @@ export default function CoverLetterGen({ onGenerate, loading }: Props) {
               >
                 {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
               </button>
-              <button
-                onClick={handleDownload}
-                className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
-                title="Download"
-              >
-                <Download className="w-4 h-4" />
-              </button>
+              <ExportMenu
+                title={`Cover_Letter_${journal.replace(/\s+/g, '_')}`}
+                sections={[{ heading: 'Cover Letter', content: coverLetter }]}
+                metadata={{
+                  date: new Date().toLocaleDateString(),
+                  type: 'Journal Submission Cover Letter',
+                }}
+                buttonClassName="px-3 py-1.5 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 flex items-center gap-1"
+              />
             </div>
           </div>
 

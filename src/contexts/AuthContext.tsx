@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 
 interface User {
   id: number;
@@ -22,31 +23,49 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    if (savedToken) {
-      fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${savedToken}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.user) {
-            setUser(data.user);
-            setToken(savedToken);
-          } else {
-            localStorage.removeItem('token');
-          }
-        })
-        .catch(() => localStorage.removeItem('token'))
-        .finally(() => setIsLoading(false));
-    } else {
+    // Handle NextAuth session (OAuth login)
+    if (status === 'authenticated' && session?.user) {
+      const sessionUser = session.user as { id?: string; email?: string | null; name?: string | null; role?: string };
+      setUser({
+        id: parseInt(sessionUser.id || '0'),
+        email: sessionUser.email || '',
+        name: sessionUser.name || '',
+        role: sessionUser.role || 'owner',
+      });
+      setToken('nextauth-session');
       setIsLoading(false);
+      return;
     }
-  }, []);
+
+    // Handle traditional JWT auth
+    if (status === 'unauthenticated' || status === 'loading') {
+      const savedToken = localStorage.getItem('token');
+      if (savedToken) {
+        fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${savedToken}` }
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.user) {
+              setUser(data.user);
+              setToken(savedToken);
+            } else {
+              localStorage.removeItem('token');
+            }
+          })
+          .catch(() => localStorage.removeItem('token'))
+          .finally(() => setIsLoading(false));
+      } else if (status !== 'loading') {
+        setIsLoading(false);
+      }
+    }
+  }, [session, status]);
 
   const login = async (email: string, password: string) => {
     const res = await fetch('/api/auth/login', {
@@ -74,7 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', data.token);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Sign out from NextAuth if using OAuth
+    if (token === 'nextauth-session') {
+      await nextAuthSignOut({ redirect: false });
+    }
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertCircle, Copy, Check, Download, FileText } from 'lucide-react';
+import { AlertCircle, Copy, Check, FileText } from 'lucide-react';
 import type { CoverLetter } from '../types';
 import { DISCLAIMER } from '../types';
+import ExportMenu from '@/components/ExportMenu';
 
 interface Props {
   data: CoverLetter | null;
@@ -88,13 +89,15 @@ export default function CoverLetterGenerator({ data, onGenerate, loading }: Prop
                 {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                 {copied ? 'Copied!' : 'Copy'}
               </button>
-              <button
-                onClick={handleDownload}
-                className="px-3 py-1.5 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 flex items-center gap-1"
-              >
-                <Download className="w-4 h-4" />
-                Download
-              </button>
+              <ExportMenu
+                title="Introduction_to_Resubmission"
+                sections={[{ heading: 'Introduction to Application', content: data.content }]}
+                metadata={{
+                  date: new Date().toLocaleDateString(),
+                  type: 'NIH Resubmission Introduction',
+                }}
+                buttonClassName="px-3 py-1.5 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 flex items-center gap-1"
+              />
             </div>
           </div>
           <div className="p-4 bg-white">

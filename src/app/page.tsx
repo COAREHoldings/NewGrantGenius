@@ -1,11 +1,11 @@
 'use client';
 
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import AuthForm from '@/components/AuthForm';
 import Header from '@/components/Header';
 import Dashboard from '@/components/Dashboard';
 
-function AppContent() {
+export default function Home() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -25,13 +25,5 @@ function AppContent() {
       <Header />
       <Dashboard />
     </div>
-  );
-}
-
-export default function Home() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
   );
 }
