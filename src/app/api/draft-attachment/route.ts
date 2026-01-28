@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' }); }
 
 const ATTACHMENT_PROMPTS: Record<string, string> = {
   'Project Summary/Abstract': `Write a 30-line Project Summary/Abstract for an NIH grant application. Include:
@@ -107,7 +105,7 @@ ${researchStrategy ? researchStrategy.substring(0, 4000) : 'Not yet written'}
 
 Generate a complete, ready-to-use ${attachmentName} document.`;
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },

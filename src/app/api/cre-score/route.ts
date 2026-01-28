@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/auth';
 import { checkRateLimit, trackUsage, estimateTokens } from '@/lib/rateLimit';
 import { neon } from '@neondatabase/serverless';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' }); }
 const sql = neon(process.env.DATABASE_URL!);
 
 const WEIGHTS = {
@@ -57,7 +57,7 @@ Score each domain and explain:
 
     const inputTokens = estimateTokens(prompt);
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' }

@@ -302,7 +302,10 @@ function ApplicationContent() {
               isOwner={true}
             />
 
-            <BiosketchGenerator />
+            <BiosketchGenerator 
+              isOpen={true}
+              onClose={() => {}}
+            />
           </div>
 
           <div className="lg:col-span-2">

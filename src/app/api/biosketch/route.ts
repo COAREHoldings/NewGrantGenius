@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' }); }
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,7 +60,7 @@ ${publications || 'Will generate placeholder examples'}
 
 Generate a complete, NIH-compliant biosketch with all sections properly formatted.`;
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
