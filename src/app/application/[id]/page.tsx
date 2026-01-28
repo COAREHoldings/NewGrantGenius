@@ -10,6 +10,7 @@ import ValidationPanel from '@/components/ValidationPanel';
 import ReviewerSimulation from '@/components/ReviewerSimulation';
 import StudySectionRecommender from '@/components/StudySectionRecommender';
 import Collaborators from '@/components/Collaborators';
+import BiosketchGenerator from '@/components/BiosketchGenerator';
 import { MECHANISMS, getFormatting } from '@/lib/mechanisms';
 import { ArrowLeft, FileText, Info, Users } from 'lucide-react';
 import Link from 'next/link';
@@ -233,6 +234,8 @@ function ApplicationContent() {
               applicationId={application.id}
               isOwner={true}
             />
+
+            <BiosketchGenerator />
           </div>
 
           <div className="lg:col-span-2">
