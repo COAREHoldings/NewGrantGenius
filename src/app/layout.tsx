@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "COARE Grant Master - NIH SBIR/STTR Grant Authoring",
+  title: "NIH Grant Master - NIH SBIR/STTR Grant Authoring",
   description: "Compliance-first grant development tool for authoring NIH SBIR/STTR applications with validation and PDF export",
 };
 

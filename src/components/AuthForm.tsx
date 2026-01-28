@@ -98,7 +98,7 @@ export default function AuthForm() {
           <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-indigo-600 rounded-xl mb-3 sm:mb-4">
             <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">COARE Grant Master</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">NIH Grant Master</h1>
           <p className="text-slate-600 mt-1 sm:mt-2 text-sm sm:text-base">NIH SBIR/STTR Grant Authoring Platform</p>
         </div>
 

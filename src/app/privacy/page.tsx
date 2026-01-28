@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { Shield, ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Privacy Policy - COARE Grant Master',
-  description: 'Privacy Policy for COARE Grant Master NIH SBIR/STTR Grant Authoring Platform',
+  title: 'Privacy Policy - NIH Grant Master',
+  description: 'Privacy Policy for NIH Grant Master NIH SBIR/STTR Grant Authoring Platform',
 };
 
 export default function PrivacyPolicy() {
@@ -33,7 +33,7 @@ export default function PrivacyPolicy() {
             <section className="mb-8">
               <h2 className="text-xl font-semibold text-slate-900 mb-4">1. Data Collection</h2>
               <p className="text-slate-600 leading-relaxed mb-4">
-                We collect information that you provide directly to us when using COARE Grant Master:
+                We collect information that you provide directly to us when using NIH Grant Master:
               </p>
               <ul className="list-disc pl-6 text-slate-600 space-y-2">
                 <li>

@@ -15,7 +15,7 @@ export default function Header() {
             <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-slate-900">COARE Grant Master</span>
+            <span className="font-semibold text-slate-900">NIH Grant Master</span>
           </Link>
 
           {user && (

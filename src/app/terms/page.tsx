@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { FileText, ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Terms of Service - COARE Grant Master',
-  description: 'Terms of Service for COARE Grant Master NIH SBIR/STTR Grant Authoring Platform',
+  title: 'Terms of Service - NIH Grant Master',
+  description: 'Terms of Service for NIH Grant Master NIH SBIR/STTR Grant Authoring Platform',
 };
 
 export default function TermsOfService() {
@@ -33,7 +33,7 @@ export default function TermsOfService() {
             <section className="mb-8">
               <h2 className="text-xl font-semibold text-slate-900 mb-4">1. Acceptance of Terms</h2>
               <p className="text-slate-600 leading-relaxed">
-                By accessing or using COARE Grant Master (&quot;the Service&quot;), you agree to be bound by these
+                By accessing or using NIH Grant Master (&quot;the Service&quot;), you agree to be bound by these
                 Terms of Service. If you do not agree to these terms, please do not use the Service.
                 These terms apply to all users, including researchers, grant writers, and
                 organizational administrators.
@@ -43,7 +43,7 @@ export default function TermsOfService() {
             <section className="mb-8">
               <h2 className="text-xl font-semibold text-slate-900 mb-4">2. Service Description</h2>
               <p className="text-slate-600 leading-relaxed mb-4">
-                COARE Grant Master is a professional grant authoring platform designed to assist users
+                NIH Grant Master is a professional grant authoring platform designed to assist users
                 in preparing NIH SBIR (Small Business Innovation Research) and STTR (Small Business
                 Technology Transfer) grant applications. The Service provides:
               </p>
@@ -81,7 +81,7 @@ export default function TermsOfService() {
               </p>
               <p className="text-slate-600 leading-relaxed">
                 <strong>Our Content:</strong> The Service, including its software, design, features,
-                and documentation, is owned by COARE Grant Master and protected by intellectual
+                and documentation, is owned by NIH Grant Master and protected by intellectual
                 property laws. You may not copy, modify, or distribute any part of the Service
                 without explicit written permission.
               </p>
@@ -147,7 +147,7 @@ export default function TermsOfService() {
                 <br />
                 <strong>Email:</strong> legal@coaregrantmaster.com
                 <br />
-                <strong>Address:</strong> COARE Grant Master, Legal Department
+                <strong>Address:</strong> NIH Grant Master, Legal Department
               </p>
             </section>
           </div>
