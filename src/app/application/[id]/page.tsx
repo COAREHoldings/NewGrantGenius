@@ -244,6 +244,10 @@ function ApplicationContent() {
             <AttachmentChecklist
               attachments={attachments}
               onUpdate={fetchApplication}
+              applicationTitle={application.title}
+              specificAims={sections.find(s => s.type === 'specific_aims')?.content || ''}
+              researchStrategy={sections.find(s => s.type === 'research_strategy')?.content || ''}
+              mechanism={application.mechanism}
             />
           </div>
         </div>
