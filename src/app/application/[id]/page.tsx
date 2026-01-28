@@ -7,8 +7,9 @@ import Header from '@/components/Header';
 import SectionEditor from '@/components/SectionEditor';
 import AttachmentChecklist from '@/components/AttachmentChecklist';
 import ValidationPanel from '@/components/ValidationPanel';
+import ReviewerSimulation from '@/components/ReviewerSimulation';
 import { MECHANISMS, NIH_FORMATTING } from '@/lib/mechanisms';
-import { ArrowLeft, FileText, Info } from 'lucide-react';
+import { ArrowLeft, FileText, Info, Users } from 'lucide-react';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
 
@@ -48,6 +49,7 @@ function ApplicationContent() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<number | null>(null);
+  const [showReview, setShowReview] = useState(false);
 
   const fetchApplication = useCallback(async () => {
     if (!token || !params.id) return;
@@ -149,6 +151,13 @@ function ApplicationContent() {
                 </span>
               </div>
             </div>
+            <button
+              onClick={() => setShowReview(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition"
+            >
+              <Users className="w-5 h-5" />
+              Run Review Simulation
+            </button>
           </div>
         </div>
 
@@ -225,6 +234,12 @@ function ApplicationContent() {
           </div>
         </div>
       </main>
+
+      <ReviewerSimulation
+        applicationId={application.id}
+        isOpen={showReview}
+        onClose={() => setShowReview(false)}
+      />
     </div>
   );
 }
