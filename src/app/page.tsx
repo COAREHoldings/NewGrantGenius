@@ -1,25 +1,10 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
-import AuthForm from '@/components/AuthForm';
 import Header from '@/components/Header';
 import Dashboard from '@/components/Dashboard';
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-500">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthForm />;
-  }
-
+  // Temporarily bypass auth for demo
   return (
     <div className="min-h-screen bg-slate-50">
       <Header />
