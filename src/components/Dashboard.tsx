@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import NewApplicationModal from './NewApplicationModal';
 import ApplicationList from './ApplicationList';
-import { FileText, BookOpen, CheckSquare, RefreshCw, Library } from 'lucide-react';
+import { FileText, BookOpen, CheckSquare, RefreshCw, Library, Search, FileSpreadsheet } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -20,7 +20,29 @@ export default function Dashboard() {
           <NewApplicationModal onCreated={() => setRefreshTrigger(t => t + 1)} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Link href="/grants" className="bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg p-4 text-white hover:opacity-90 transition-opacity">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                <Search className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-white/80">Discover</p>
+                <p className="font-semibold">Grant Discovery</p>
+              </div>
+            </div>
+          </Link>
+          <Link href="/budget" className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg p-4 text-white hover:opacity-90 transition-opacity">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                <FileSpreadsheet className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-white/80">Plan</p>
+                <p className="font-semibold">Budget Tool</p>
+              </div>
+            </div>
+          </Link>
           <Link href="/resubmission" className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-4 text-white hover:opacity-90 transition-opacity">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
@@ -43,7 +65,9 @@ export default function Dashboard() {
               </div>
             </div>
           </Link>
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
                 <FileText className="w-5 h-5 text-indigo-600" />
