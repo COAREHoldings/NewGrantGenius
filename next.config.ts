@@ -29,7 +29,5 @@ const sentryWebpackPluginOptions = {
   disableLogger: true,
 };
 
-// Export with Sentry wrapper (only if DSN is configured)
-export default process.env.NEXT_PUBLIC_SENTRY_DSN
-  ? withSentryConfig(nextConfig, sentryWebpackPluginOptions)
-  : nextConfig;
+// Export without Sentry for now (can enable later with proper env vars)
+export default nextConfig;
