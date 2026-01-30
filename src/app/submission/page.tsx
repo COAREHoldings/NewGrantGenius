@@ -98,7 +98,11 @@ export default function SubmissionPage() {
 
   const handleStartingPointSelect = (point: string) => {
     setStartingPoint(point);
-    // "Starting from scratch" skips document upload - goes to team then directly to creation
+    // "Starting from scratch" goes directly to the 8-module Grant Builder
+    if (point === 'scratch') {
+      window.location.href = '/grant-builder';
+      return;
+    }
     setStep('team');
   };
 
