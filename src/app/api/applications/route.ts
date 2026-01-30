@@ -1,23 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { sql } from 'drizzle-orm';
+import { createServerClient } from '@/lib/supabase';
 import { MECHANISMS } from '@/lib/mechanisms';
 import { validateRequestBody, sanitizeInput } from '@/lib/validate';
 
 // Demo mode - always return user ID 1
-async function getUserId(req: NextRequest): Promise<number> {
-  return 1; // Demo user
+async function getUserId(): Promise<string> {
+  return '1';
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const userId = await getUserId(req);
+    const userId = await getUserId();
+    const supabase = createServerClient();
 
-    const applications = await db.execute(
-      sql`SELECT * FROM applications WHERE user_id = ${userId} ORDER BY created_at DESC`
-    );
+    const { data: applications, error } = await supabase
+      .from('applications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-    return NextResponse.json({ applications: applications.rows || applications });
+    if (error) throw error;
+
+    return NextResponse.json({ applications: applications || [] });
   } catch (error) {
     console.error('Get applications error:', error);
     return NextResponse.json({ applications: [] });
@@ -26,7 +30,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const userId = await getUserId(req);
+    const userId = await getUserId();
+    const supabase = createServerClient();
 
     const body = await req.json();
     
@@ -48,29 +53,35 @@ export async function POST(req: NextRequest) {
     }
 
     // Create application
-    const appResult = await db.execute(
-      sql`INSERT INTO applications (title, mechanism, status, user_id)
-          VALUES (${title}, ${mechanism}, 'draft', ${userId})
-          RETURNING *`
-    );
-    const application = (appResult.rows || appResult)[0];
+    const { data: application, error: appError } = await supabase
+      .from('applications')
+      .insert({ title, mechanism, status: 'draft', user_id: userId })
+      .select()
+      .single();
+
+    if (appError) throw appError;
 
     // Create sections based on mechanism
-    for (let i = 0; i < mechanismConfig.sections.length; i++) {
-      const sec = mechanismConfig.sections[i];
-      await db.execute(
-        sql`INSERT INTO sections (application_id, type, title, page_limit, required_headings, order_index)
-            VALUES (${application.id}, ${sec.type}, ${sec.title}, ${sec.pageLimit}, ${JSON.stringify(sec.requiredHeadings || [])}, ${i})`
-      );
-    }
+    const sections = mechanismConfig.sections.map((sec, i) => ({
+      application_id: application.id,
+      type: sec.type,
+      title: sec.title,
+      page_limit: sec.pageLimit,
+      required_headings: sec.requiredHeadings || [],
+      order_index: i
+    }));
+
+    await supabase.from('sections').insert(sections);
 
     // Create attachment placeholders
-    for (const att of mechanismConfig.attachments) {
-      await db.execute(
-        sql`INSERT INTO attachments (application_id, name, required, status)
-            VALUES (${application.id}, ${att.name}, ${att.required}, 'pending')`
-      );
-    }
+    const attachments = mechanismConfig.attachments.map(att => ({
+      application_id: application.id,
+      name: att.name,
+      required: att.required,
+      status: 'pending'
+    }));
+
+    await supabase.from('attachments').insert(attachments);
 
     return NextResponse.json({ application });
   } catch (error) {

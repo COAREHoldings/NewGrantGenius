@@ -1,32 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
-import { verifyToken } from '@/lib/auth';
+import { createServerClient } from '@/lib/supabase';
 import { estimatePageCount } from '@/lib/validation';
 import { validateRequestBody } from '@/lib/validate';
-
-const sql = neon(process.env.DATABASE_URL!);
-
-async function getUserId(req: NextRequest): Promise<number | null> {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const payload = await verifyToken(authHeader.slice(7));
-  return payload?.userId ?? null;
-}
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await getUserId(req);
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const supabase = createServerClient();
     const { id } = await params;
     const body = await req.json();
     
-    // Validate request body
     const validation = validateRequestBody(body);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
@@ -34,22 +19,20 @@ export async function PUT(
     
     const { content } = body;
 
-    // Verify section belongs to user's application
-    const sectionResult = await sql`
-      SELECT s.*, a.user_id FROM sections s
-      JOIN applications a ON s.application_id = a.id
-      WHERE s.id = ${id} AND a.user_id = ${userId}
-    `;
-    if (sectionResult.length === 0) {
+    const { data: section } = await supabase
+      .from('sections')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (!section) {
       return NextResponse.json({ error: 'Section not found' }, { status: 404 });
     }
 
-    const section = sectionResult[0];
     const pageCount = estimatePageCount(content);
     const isValid = pageCount <= section.page_limit;
     const isComplete = content && content.trim().length > 0;
 
-    // Check required headings
     let headingsValid = true;
     if (section.required_headings && Array.isArray(section.required_headings)) {
       const contentLower = content.toLowerCase();
@@ -61,18 +44,20 @@ export async function PUT(
       }
     }
 
-    await sql`
-      UPDATE sections SET
-        content = ${content},
-        page_count = ${pageCount},
-        is_valid = ${isValid && headingsValid},
-        is_complete = ${isComplete},
-        updated_at = NOW()
-      WHERE id = ${id}
-    `;
+    const { data: updated } = await supabase
+      .from('sections')
+      .update({
+        content,
+        page_count: pageCount,
+        is_valid: isValid && headingsValid,
+        is_complete: isComplete,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
-    const updated = await sql`SELECT * FROM sections WHERE id = ${id}`;
-    return NextResponse.json({ section: updated[0] });
+    return NextResponse.json({ section: updated });
   } catch (error) {
     console.error('Update section error:', error);
     return NextResponse.json({ error: 'Failed to update section' }, { status: 500 });

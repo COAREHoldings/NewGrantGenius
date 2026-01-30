@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
-import { verifyToken } from '@/lib/auth';
+import { createServerClient } from '@/lib/supabase';
 
-const sql = neon(process.env.DATABASE_URL!);
-
-async function getUserId(req: NextRequest): Promise<number | null> {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const payload = await verifyToken(authHeader.slice(7));
-  return payload?.userId ?? null;
+// Demo mode
+async function getUserId(): Promise<string> {
+  return '1';
 }
 
 export async function GET(
@@ -16,31 +11,36 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await getUserId(req);
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const userId = await getUserId();
+    const supabase = createServerClient();
     const { id } = await params;
-    const appResult = await sql`
-      SELECT * FROM applications WHERE id = ${id} AND user_id = ${userId}
-    `;
-    if (appResult.length === 0) {
+
+    const { data: application, error: appError } = await supabase
+      .from('applications')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (appError || !application) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
-    const sections = await sql`
-      SELECT * FROM sections WHERE application_id = ${id} ORDER BY order_index
-    `;
+    const { data: sections } = await supabase
+      .from('sections')
+      .select('*')
+      .eq('application_id', id)
+      .order('order_index');
 
-    const attachments = await sql`
-      SELECT * FROM attachments WHERE application_id = ${id}
-    `;
+    const { data: attachments } = await supabase
+      .from('attachments')
+      .select('*')
+      .eq('application_id', id);
 
     return NextResponse.json({
-      application: appResult[0],
-      sections,
-      attachments
+      application,
+      sections: sections || [],
+      attachments: attachments || []
     });
   } catch (error) {
     console.error('Get application error:', error);
@@ -53,18 +53,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await getUserId(req);
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const userId = await getUserId();
+    const supabase = createServerClient();
     const { id } = await params;
-    
+
     // Delete related records first
-    await sql`DELETE FROM validation_results WHERE application_id = ${id}`;
-    await sql`DELETE FROM attachments WHERE application_id = ${id}`;
-    await sql`DELETE FROM sections WHERE application_id = ${id}`;
-    await sql`DELETE FROM applications WHERE id = ${id} AND user_id = ${userId}`;
+    await supabase.from('validation_results').delete().eq('application_id', id);
+    await supabase.from('attachments').delete().eq('application_id', id);
+    await supabase.from('sections').delete().eq('application_id', id);
+    await supabase.from('applications').delete().eq('id', id).eq('user_id', userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
