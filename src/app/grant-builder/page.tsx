@@ -52,6 +52,44 @@ interface GrantData {
     logicalOrder: boolean;
     noDisconnects: boolean;
   };
+  
+  // Module 4: Collaborators
+  collaborators: Array<{
+    id: string;
+    name: string;
+    role: string;
+    expertise: string;
+    institution: string;
+    linkedAim: string;
+  }>;
+  
+  // Module 5: Approach
+  approaches: Array<{
+    aimId: string;
+    methodology: string;
+    timeline: string;
+    milestones: string;
+    risks: string;
+    alternatives: string;
+  }>;
+  
+  // Module 7: Preliminary Data
+  preliminaryData: Array<{
+    id: string;
+    description: string;
+    linkedAim: string;
+    dataType: string;
+    figureRef: string;
+  }>;
+  
+  // Module 8: Figure Concepts  
+  figureConcepts: Array<{
+    id: string;
+    title: string;
+    type: string;
+    description: string;
+    linkedAims: string[];
+  }>;
 }
 
 const FUNDING_MECHANISMS = [
@@ -96,7 +134,11 @@ export default function GrantBuilderPage() {
       closesGap: false,
       logicalOrder: false,
       noDisconnects: false
-    }
+    },
+    collaborators: [{ id: '1', name: '', role: '', expertise: '', institution: '', linkedAim: '' }],
+    approaches: [],
+    preliminaryData: [{ id: '1', description: '', linkedAim: '', dataType: '', figureRef: '' }],
+    figureConcepts: [{ id: '1', title: '', type: 'schematic', description: '', linkedAims: [] }]
   });
   const [generating, setGenerating] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -654,20 +696,460 @@ export default function GrantBuilderPage() {
               </div>
             )}
 
-            {/* Placeholder for other modules */}
-            {['collaborators', 'approach', 'budget', 'data', 'figure'].includes(currentModule) && (
-              <div className="bg-white rounded-xl border border-slate-200 p-6">
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    {modules.find(m => m.id === currentModule)?.icon}
+            {/* Module 4: Collaborators */}
+            {currentModule === 'collaborators' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h2 className="text-lg font-semibold text-slate-900 mb-1">Module 4: Team & Collaborator Mapping</h2>
+                  <p className="text-sm text-slate-600 mb-6">Map expertise requirements to team members for each aim.</p>
+
+                  <div className="space-y-4">
+                    {grantData.collaborators.map((collab, idx) => (
+                      <div key={collab.id} className="border border-slate-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-slate-900">Team Member {idx + 1}</h4>
+                          {grantData.collaborators.length > 1 && (
+                            <button onClick={() => {
+                              updateField('collaborators', grantData.collaborators.filter(c => c.id !== collab.id));
+                            }} className="text-red-500 hover:text-red-700 text-sm">Remove</button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                            <input
+                              type="text"
+                              value={collab.name}
+                              onChange={(e) => updateField('collaborators', grantData.collaborators.map(c => 
+                                c.id === collab.id ? {...c, name: e.target.value} : c
+                              ))}
+                              placeholder="Dr. Jane Smith"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                            <select
+                              value={collab.role}
+                              onChange={(e) => updateField('collaborators', grantData.collaborators.map(c => 
+                                c.id === collab.id ? {...c, role: e.target.value} : c
+                              ))}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="">Select role...</option>
+                              <option value="PI">Principal Investigator</option>
+                              <option value="Co-PI">Co-Principal Investigator</option>
+                              <option value="Co-I">Co-Investigator</option>
+                              <option value="Consultant">Consultant</option>
+                              <option value="Collaborator">Collaborator</option>
+                              <option value="Postdoc">Postdoctoral Fellow</option>
+                              <option value="Student">Graduate Student</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Key Expertise</label>
+                            <input
+                              type="text"
+                              value={collab.expertise}
+                              onChange={(e) => updateField('collaborators', grantData.collaborators.map(c => 
+                                c.id === collab.id ? {...c, expertise: e.target.value} : c
+                              ))}
+                              placeholder="Molecular biology, drug development"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Institution</label>
+                            <input
+                              type="text"
+                              value={collab.institution}
+                              onChange={(e) => updateField('collaborators', grantData.collaborators.map(c => 
+                                c.id === collab.id ? {...c, institution: e.target.value} : c
+                              ))}
+                              placeholder="University of Texas"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Linked to Aim</label>
+                            <select
+                              value={collab.linkedAim}
+                              onChange={(e) => updateField('collaborators', grantData.collaborators.map(c => 
+                                c.id === collab.id ? {...c, linkedAim: e.target.value} : c
+                              ))}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="">All aims / General</option>
+                              {grantData.aims.map((aim, i) => (
+                                <option key={aim.id} value={aim.id}>Aim {i + 1}: {aim.scientificQuestion.slice(0, 40)}...</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button onClick={() => {
+                      const newId = (grantData.collaborators.length + 1).toString();
+                      updateField('collaborators', [...grantData.collaborators, { id: newId, name: '', role: '', expertise: '', institution: '', linkedAim: '' }]);
+                    }} className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover:border-indigo-300 hover:text-indigo-600">
+                      + Add Team Member
+                    </button>
                   </div>
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">
-                    {modules.find(m => m.id === currentModule)?.name}
-                  </h3>
-                  <p className="text-slate-600 mb-4">
-                    {modules.find(m => m.id === currentModule)?.description}
+                </div>
+              </div>
+            )}
+
+            {/* Module 5: Approach */}
+            {currentModule === 'approach' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h2 className="text-lg font-semibold text-slate-900 mb-1">Module 5: Experimental Approach</h2>
+                  <p className="text-sm text-slate-600 mb-6">Design the methodology, timeline, and risk mitigation for each aim.</p>
+
+                  {grantData.aims.map((aim, idx) => (
+                    <div key={aim.id} className="mb-6 border border-slate-200 rounded-lg p-4">
+                      <h4 className="font-medium text-slate-900 mb-3">Aim {idx + 1}: {aim.scientificQuestion || '(No question defined)'}</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Methodology & Experiments</label>
+                          <textarea
+                            value={grantData.approaches.find(a => a.aimId === aim.id)?.methodology || ''}
+                            onChange={(e) => {
+                              const existing = grantData.approaches.find(a => a.aimId === aim.id);
+                              if (existing) {
+                                updateField('approaches', grantData.approaches.map(a => 
+                                  a.aimId === aim.id ? {...a, methodology: e.target.value} : a
+                                ));
+                              } else {
+                                updateField('approaches', [...grantData.approaches, { aimId: aim.id, methodology: e.target.value, timeline: '', milestones: '', risks: '', alternatives: '' }]);
+                              }
+                            }}
+                            placeholder="Describe the experimental approach, techniques, and key experiments..."
+                            rows={3}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Timeline</label>
+                            <input
+                              type="text"
+                              value={grantData.approaches.find(a => a.aimId === aim.id)?.timeline || ''}
+                              onChange={(e) => {
+                                const existing = grantData.approaches.find(a => a.aimId === aim.id);
+                                if (existing) {
+                                  updateField('approaches', grantData.approaches.map(a => 
+                                    a.aimId === aim.id ? {...a, timeline: e.target.value} : a
+                                  ));
+                                } else {
+                                  updateField('approaches', [...grantData.approaches, { aimId: aim.id, methodology: '', timeline: e.target.value, milestones: '', risks: '', alternatives: '' }]);
+                                }
+                              }}
+                              placeholder="e.g., Months 1-12"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Key Milestones</label>
+                            <input
+                              type="text"
+                              value={grantData.approaches.find(a => a.aimId === aim.id)?.milestones || ''}
+                              onChange={(e) => {
+                                const existing = grantData.approaches.find(a => a.aimId === aim.id);
+                                if (existing) {
+                                  updateField('approaches', grantData.approaches.map(a => 
+                                    a.aimId === aim.id ? {...a, milestones: e.target.value} : a
+                                  ));
+                                } else {
+                                  updateField('approaches', [...grantData.approaches, { aimId: aim.id, methodology: '', timeline: '', milestones: e.target.value, risks: '', alternatives: '' }]);
+                                }
+                              }}
+                              placeholder="e.g., Complete in vitro validation by Month 6"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Potential Risks</label>
+                          <textarea
+                            value={grantData.approaches.find(a => a.aimId === aim.id)?.risks || ''}
+                            onChange={(e) => {
+                              const existing = grantData.approaches.find(a => a.aimId === aim.id);
+                              if (existing) {
+                                updateField('approaches', grantData.approaches.map(a => 
+                                  a.aimId === aim.id ? {...a, risks: e.target.value} : a
+                                ));
+                              } else {
+                                updateField('approaches', [...grantData.approaches, { aimId: aim.id, methodology: '', timeline: '', milestones: '', risks: e.target.value, alternatives: '' }]);
+                              }
+                            }}
+                            placeholder="What could go wrong? Technical risks, etc."
+                            rows={2}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Alternative Strategies</label>
+                          <textarea
+                            value={grantData.approaches.find(a => a.aimId === aim.id)?.alternatives || ''}
+                            onChange={(e) => {
+                              const existing = grantData.approaches.find(a => a.aimId === aim.id);
+                              if (existing) {
+                                updateField('approaches', grantData.approaches.map(a => 
+                                  a.aimId === aim.id ? {...a, alternatives: e.target.value} : a
+                                ));
+                              } else {
+                                updateField('approaches', [...grantData.approaches, { aimId: aim.id, methodology: '', timeline: '', milestones: '', risks: '', alternatives: e.target.value }]);
+                              }
+                            }}
+                            placeholder="Backup plans if primary approach fails..."
+                            rows={2}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Module 6: Budget - Link to existing tool */}
+            {currentModule === 'budget' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h2 className="text-lg font-semibold text-slate-900 mb-1">Module 6: Budget Planning</h2>
+                  <p className="text-sm text-slate-600 mb-6">Translate your experimental approach into a detailed budget.</p>
+
+                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-8 text-center">
+                    <DollarSign className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">NIH Budget Calculator</h3>
+                    <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                      Use our comprehensive budget tool to calculate personnel costs, equipment, supplies, and other direct costs based on your approach.
+                    </p>
+                    <div className="flex justify-center gap-4">
+                      <Link 
+                        href="/budget" 
+                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium inline-flex items-center gap-2"
+                      >
+                        <DollarSign className="w-5 h-5" />
+                        Open Budget Tool
+                      </Link>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-4">Your approach details will help inform budget line items.</p>
+                  </div>
+
+                  <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <h4 className="font-medium text-amber-800 mb-2">Budget Tips Based on Your Approach:</h4>
+                    <ul className="text-sm text-amber-700 space-y-1">
+                      {grantData.approaches.some(a => a.methodology?.toLowerCase().includes('animal')) && (
+                        <li>• Include animal costs and vivarium fees</li>
+                      )}
+                      {grantData.approaches.some(a => a.methodology?.toLowerCase().includes('clinical') || a.methodology?.toLowerCase().includes('patient')) && (
+                        <li>• Budget for clinical sample acquisition and IRB fees</li>
+                      )}
+                      {grantData.collaborators.filter(c => c.role === 'Consultant').length > 0 && (
+                        <li>• Include consultant fees for your {grantData.collaborators.filter(c => c.role === 'Consultant').length} consultant(s)</li>
+                      )}
+                      {grantData.fundingMechanism.includes('SBIR') && (
+                        <li>• SBIR: Ensure subcontracting limits are met (33% Phase I, 50% Phase II)</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Module 7: Preliminary Data */}
+            {currentModule === 'data' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h2 className="text-lg font-semibold text-slate-900 mb-1">Module 7: Preliminary Data Integration</h2>
+                  <p className="text-sm text-slate-600 mb-6">Document supporting data that strengthens your proposal.</p>
+
+                  <div className="space-y-4">
+                    {grantData.preliminaryData.map((data, idx) => (
+                      <div key={data.id} className="border border-slate-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-slate-900">Data Item {idx + 1}</h4>
+                          {grantData.preliminaryData.length > 1 && (
+                            <button onClick={() => {
+                              updateField('preliminaryData', grantData.preliminaryData.filter(d => d.id !== data.id));
+                            }} className="text-red-500 hover:text-red-700 text-sm">Remove</button>
+                          )}
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <textarea
+                              value={data.description}
+                              onChange={(e) => updateField('preliminaryData', grantData.preliminaryData.map(d => 
+                                d.id === data.id ? {...d, description: e.target.value} : d
+                              ))}
+                              placeholder="Describe the preliminary data and key findings..."
+                              rows={2}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-1">Data Type</label>
+                              <select
+                                value={data.dataType}
+                                onChange={(e) => updateField('preliminaryData', grantData.preliminaryData.map(d => 
+                                  d.id === data.id ? {...d, dataType: e.target.value} : d
+                                ))}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              >
+                                <option value="">Select type...</option>
+                                <option value="in_vitro">In Vitro Results</option>
+                                <option value="in_vivo">In Vivo Results</option>
+                                <option value="clinical">Clinical Data</option>
+                                <option value="computational">Computational Analysis</option>
+                                <option value="published">Published Data</option>
+                                <option value="pilot">Pilot Study</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-1">Supports Aim</label>
+                              <select
+                                value={data.linkedAim}
+                                onChange={(e) => updateField('preliminaryData', grantData.preliminaryData.map(d => 
+                                  d.id === data.id ? {...d, linkedAim: e.target.value} : d
+                                ))}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              >
+                                <option value="">All aims / General</option>
+                                {grantData.aims.map((aim, i) => (
+                                  <option key={aim.id} value={aim.id}>Aim {i + 1}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-1">Figure Reference</label>
+                              <input
+                                type="text"
+                                value={data.figureRef}
+                                onChange={(e) => updateField('preliminaryData', grantData.preliminaryData.map(d => 
+                                  d.id === data.id ? {...d, figureRef: e.target.value} : d
+                                ))}
+                                placeholder="e.g., Figure 1A"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button onClick={() => {
+                      const newId = (grantData.preliminaryData.length + 1).toString();
+                      updateField('preliminaryData', [...grantData.preliminaryData, { id: newId, description: '', linkedAim: '', dataType: '', figureRef: '' }]);
+                    }} className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover:border-indigo-300 hover:text-indigo-600">
+                      + Add Preliminary Data
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Module 8: Summary Figure */}
+            {currentModule === 'figure' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h2 className="text-lg font-semibold text-slate-900 mb-1">Module 8: Summary Figure Planning</h2>
+                  <p className="text-sm text-slate-600 mb-6">Plan your conceptual summary schematic and key figures.</p>
+
+                  <div className="space-y-4">
+                    {grantData.figureConcepts.map((fig, idx) => (
+                      <div key={fig.id} className="border border-slate-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-slate-900">Figure {idx + 1}</h4>
+                          {grantData.figureConcepts.length > 1 && (
+                            <button onClick={() => {
+                              updateField('figureConcepts', grantData.figureConcepts.filter(f => f.id !== fig.id));
+                            }} className="text-red-500 hover:text-red-700 text-sm">Remove</button>
+                          )}
+                        </div>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-1">Figure Title</label>
+                              <input
+                                type="text"
+                                value={fig.title}
+                                onChange={(e) => updateField('figureConcepts', grantData.figureConcepts.map(f => 
+                                  f.id === fig.id ? {...f, title: e.target.value} : f
+                                ))}
+                                placeholder="e.g., Proposed Mechanism of Action"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-1">Figure Type</label>
+                              <select
+                                value={fig.type}
+                                onChange={(e) => updateField('figureConcepts', grantData.figureConcepts.map(f => 
+                                  f.id === fig.id ? {...f, type: e.target.value} : f
+                                ))}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              >
+                                <option value="schematic">Schematic/Mechanism</option>
+                                <option value="workflow">Experimental Workflow</option>
+                                <option value="timeline">Timeline/Gantt</option>
+                                <option value="data">Data Figure</option>
+                                <option value="comparison">Comparison Chart</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description/Content</label>
+                            <textarea
+                              value={fig.description}
+                              onChange={(e) => updateField('figureConcepts', grantData.figureConcepts.map(f => 
+                                f.id === fig.id ? {...f, description: e.target.value} : f
+                              ))}
+                              placeholder="Describe what this figure should show, key elements to include..."
+                              rows={3}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button onClick={() => {
+                      const newId = (grantData.figureConcepts.length + 1).toString();
+                      updateField('figureConcepts', [...grantData.figureConcepts, { id: newId, title: '', type: 'schematic', description: '', linkedAims: [] }]);
+                    }} className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover:border-indigo-300 hover:text-indigo-600">
+                      + Add Figure Concept
+                    </button>
+                  </div>
+                </div>
+
+                {/* Summary Figure Generator */}
+                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-200 p-6">
+                  <h3 className="font-semibold text-slate-900 mb-2">Summary Figure Generator</h3>
+                  <p className="text-sm text-slate-600 mb-4">
+                    Based on your grant structure, generate a conceptual summary schematic.
                   </p>
-                  <p className="text-sm text-slate-500">This module is coming in Phase 2</p>
+                  <div className="bg-white rounded-lg p-4 mb-4">
+                    <h4 className="text-sm font-medium text-slate-700 mb-2">Your Grant Structure:</h4>
+                    <ul className="text-sm text-slate-600 space-y-1">
+                      <li>• <strong>Gap:</strong> {grantData.gapStatement?.slice(0, 80) || '(Not defined)'}...</li>
+                      <li>• <strong>Hypothesis:</strong> {grantData.centralHypothesis?.slice(0, 80) || '(Not defined)'}...</li>
+                      <li>• <strong>Aims:</strong> {grantData.aims.length} specific aim(s)</li>
+                      <li>• <strong>Team:</strong> {grantData.collaborators.filter(c => c.name).length} team member(s)</li>
+                    </ul>
+                  </div>
+                  <button 
+                    disabled={!grantData.centralHypothesis || grantData.aims.length === 0}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Image className="w-4 h-4" />
+                    Generate Summary Schematic
+                  </button>
+                  {(!grantData.centralHypothesis || grantData.aims.length === 0) && (
+                    <p className="text-xs text-amber-600 mt-2">Complete hypothesis and aims first to generate summary figure.</p>
+                  )}
                 </div>
               </div>
             )}
