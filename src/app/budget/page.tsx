@@ -18,12 +18,29 @@ interface GrantRule { id: string; name: string; fullName: string; maxBudget: num
 const GRANT_RULES: Record<string, GrantRule> = {
   'sbir-phase1': { id: 'sbir-phase1', name: 'SBIR Phase I', fullName: 'Small Business Innovation Research - Phase I', maxBudget: 275000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $275,000', 'Subcontracts cannot exceed 33% of total budget'] },
   'sbir-phase2': { id: 'sbir-phase2', name: 'SBIR Phase II', fullName: 'Small Business Innovation Research - Phase II', maxBudget: 1750000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $1,750,000', 'Subcontracts cannot exceed 33% of total budget'] },
+  'sbir-fasttrack': { id: 'sbir-fasttrack', name: 'SBIR Fast Track', fullName: 'Small Business Innovation Research - Fast Track (Phase I/II)', maxBudget: 2025000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Combined Phase I ($275K) + Phase II ($1.75M)', 'Single application for both phases', 'Subcontracts cannot exceed 33% of total budget', 'Must meet Phase I milestones to proceed'] },
   'sttr-phase1': { id: 'sttr-phase1', name: 'STTR Phase I', fullName: 'Small Business Technology Transfer - Phase I', maxBudget: 275000, subcontractLimit: 0.40, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $275,000', 'Research institution must perform at least 30% of work'] },
   'sttr-phase2': { id: 'sttr-phase2', name: 'STTR Phase II', fullName: 'Small Business Technology Transfer - Phase II', maxBudget: 1750000, subcontractLimit: 0.40, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $1,750,000', 'Research institution must perform at least 30% of work'] },
+  'sttr-fasttrack': { id: 'sttr-fasttrack', name: 'STTR Fast Track', fullName: 'Small Business Technology Transfer - Fast Track (Phase I/II)', maxBudget: 2025000, subcontractLimit: 0.40, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Combined Phase I ($275K) + Phase II ($1.75M)', 'Single application for both phases', 'Research institution must perform at least 30% of work'] },
   r01: { id: 'r01', name: 'NIH R01', fullName: 'NIH Research Project Grant (R01)', maxBudget: 250000, subcontractLimit: null, salaryCapPerYear: 228000, fringeRate: 0.32, indirectRate: 0.55, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Modular budget: $250,000/year direct costs', 'NIH Salary Cap: $228,000 (effective Jan 11, 2026)'] },
   nci: { id: 'nci', name: 'NCI R01', fullName: 'National Cancer Institute Research Project Grant (R01)', maxBudget: 250000, subcontractLimit: null, salaryCapPerYear: 228000, fringeRate: 0.32, indirectRate: 0.55, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Modular budget: $250,000/year direct costs', 'NIH Salary Cap: $228,000'] },
   'dod-sbir-phase1': { id: 'dod-sbir-phase1', name: 'DOD SBIR Phase I', fullName: 'Department of Defense SBIR - Phase I', maxBudget: 314363, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.45, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $314,363', 'Check dodsbirsttr.mil for current program status'] },
+  'dod-sbir-phase2': { id: 'dod-sbir-phase2', name: 'DOD SBIR Phase II', fullName: 'Department of Defense SBIR - Phase II', maxBudget: 1800000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.45, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $1,800,000', 'Check dodsbirsttr.mil for current program status'] },
   cprit: { id: 'cprit', name: 'CPRIT', fullName: 'Cancer Prevention Research Institute of Texas', maxBudget: null, subcontractLimit: null, salaryCapPerYear: null, fringeRate: 0.28, indirectRate: 0.05, indirectBase: 'TDC', equipmentThreshold: 5000, notes: ['Texas institutions only', 'Indirect costs capped at 5%'] },
+};
+
+// Grant conversion mapping - shows what happens when switching between grant types
+const GRANT_CONVERSION_NOTES: Record<string, Record<string, string[]>> = {
+  'sbir-phase1': {
+    'dod-sbir-phase1': ['Budget limit increases to $314,363', 'Indirect rate decreases to 45%', 'Review DOD-specific requirements'],
+    'sttr-phase1': ['Subcontract limit increases to 40%', 'Research institution must perform 30% of work'],
+  },
+  'dod-sbir-phase1': {
+    'sbir-phase1': ['Budget limit decreases to $275,000', 'Indirect rate increases to 50%', 'NIH-specific formatting required'],
+  },
+  'sttr-phase1': {
+    'sbir-phase1': ['Subcontract limit decreases to 33%', 'No research institution requirement'],
+  },
 };
 
 const PERSONNEL_ROLES = ['Principal Investigator', 'Co-Investigator', 'Postdoctoral Fellow', 'Graduate Student', 'Research Associate', 'Research Technician', 'Lab Manager', 'Data Analyst', 'Project Coordinator'];
@@ -201,9 +218,24 @@ function SetupStep({ onNext }: { onNext: () => void }) {
           {errors.grantType && <p className="text-error text-sm mt-1">{errors.grantType}</p>}
         </div>
         {selectedRule && (
-          <div className="bg-primary-50 rounded-xl p-4 space-y-2">
+          <div className="bg-primary-50 rounded-xl p-4 space-y-3">
             <h4 className="font-medium text-primary-900">Grant Information</h4>
-            <ul className="text-sm text-primary-900 space-y-1">{selectedRule.notes.map((note, i) => <li key={i}>- {note}</li>)}</ul>
+            <ul className="text-sm text-primary-900 space-y-1">{selectedRule.notes.map((note, i) => <li key={i}>• {note}</li>)}</ul>
+            <div className="pt-2 border-t border-primary-200">
+              <p className="text-xs font-medium text-primary-800 mb-2">Quick Convert to Similar Grant:</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(GRANT_RULES).filter(([id]) => id !== state.grantType && (
+                  (state.grantType.includes('sbir') && (id.includes('sbir') || id.includes('sttr'))) ||
+                  (state.grantType.includes('sttr') && (id.includes('sbir') || id.includes('sttr'))) ||
+                  (state.grantType.includes('r01') || state.grantType === 'nci') && (id.includes('r01') || id === 'nci') ||
+                  (state.grantType.includes('dod') && id.includes('dod'))
+                )).slice(0, 4).map(([id, rule]) => (
+                  <button key={id} onClick={() => dispatch({ type: 'SET_PROJECT_INFO', payload: { grantType: id } })} className="text-xs px-2 py-1 bg-white border border-primary-300 rounded hover:bg-primary-100 text-primary-700">
+                    → {rule.name}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
         <div className="grid grid-cols-2 gap-4">
