@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase';
 import { hashPassword, createToken } from '@/lib/auth';
 
-const SUPABASE_URL = 'https://dvuhtfzsvcacyrlfettz.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dWh0ZnpzdmNhY3lybGZldHR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTY0OTc5NiwiZXhwIjoyMDg1MjI1Nzk2fQ.LwTr315VLD6hDogIQC7d7nzXMJIeZqodktpD5JHTLk0';
-
 export async function POST(request: NextRequest) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const supabase = createAdminClient();
 
   try {
     const { email, password, name } = await request.json();
@@ -27,13 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password
-    let hashedPassword: string;
-    try {
-      hashedPassword = await hashPassword(password);
-    } catch (hashErr) {
-      console.error('Password hashing failed:', hashErr);
-      return NextResponse.json({ error: 'Password hashing failed', details: String(hashErr) }, { status: 500 });
-    }
+    const hashedPassword = await hashPassword(password);
 
     // Create user
     const { data: user, error } = await supabase
@@ -48,13 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create JWT token
-    let token: string;
-    try {
-      token = await createToken({ userId: user.id, email: user.email, role: user.role });
-    } catch (tokenErr) {
-      console.error('Token creation failed:', tokenErr);
-      return NextResponse.json({ error: 'Token creation failed', details: String(tokenErr) }, { status: 500 });
-    }
+    const token = await createToken({ userId: user.id, email: user.email, role: user.role });
 
     return NextResponse.json({ user, token });
   } catch (error) {
