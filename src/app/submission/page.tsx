@@ -350,6 +350,48 @@ export default function SubmissionPage() {
         {/* Step 3: Documents */}
         {step === 'documents' && (
           <div className="space-y-6">
+            {/* Full Grant Upload */}
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-200 p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Package className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Upload Complete Grant</h2>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Have your entire grant in one document? Upload it here and we'll parse and validate all sections automatically.
+                  </p>
+                </div>
+              </div>
+
+              <label className="block">
+                <div className="border-2 border-dashed border-indigo-300 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-all">
+                  <Upload className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
+                  <p className="font-medium text-slate-700">Drop your complete grant document here</p>
+                  <p className="text-sm text-slate-500 mt-1">PDF, DOC, or DOCX up to 100MB</p>
+                  <p className="text-xs text-indigo-600 mt-3">We'll extract Specific Aims, Research Strategy, Budget, and more</p>
+                  <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      // TODO: Process full grant upload
+                      alert(`Uploaded: ${file.name}\nThis will parse and validate all sections automatically.`);
+                    }
+                  }} />
+                </div>
+              </label>
+
+              <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                <span>AI-powered extraction identifies all standard NIH grant sections</span>
+              </div>
+            </div>
+
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-slate-200"></div>
+              <span className="flex-shrink mx-4 text-sm text-slate-400">or upload individual sections</span>
+              <div className="flex-grow border-t border-slate-200"></div>
+            </div>
+
             {/* Biosketches */}
             <div className="bg-white rounded-xl border border-slate-200 p-6">
               <div className="flex items-start gap-3 mb-4">
