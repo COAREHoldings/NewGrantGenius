@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface User {
   id: number;
@@ -22,95 +21,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Demo user for testing
+const DEMO_USER: User = {
+  id: 1,
+  email: 'demo@grantgenius.com',
+  name: 'Demo User',
+  role: 'owner',
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession();
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user] = useState<User | null>(DEMO_USER);
+  const [token] = useState<string | null>('demo-token');
+  const [isLoading] = useState(false);
 
-  useEffect(() => {
-    // Handle NextAuth session (OAuth login)
-    if (status === 'authenticated' && session?.user) {
-      const sessionUser = session.user as { id?: string; email?: string | null; name?: string | null; role?: string };
-      setUser({
-        id: parseInt(sessionUser.id || '0'),
-        email: sessionUser.email || '',
-        name: sessionUser.name || '',
-        role: sessionUser.role || 'owner',
-      });
-      setToken('nextauth-session');
-      setIsLoading(false);
-      return;
-    }
-
-    // Handle traditional JWT auth
-    if (status === 'unauthenticated' || status === 'loading') {
-      const savedToken = localStorage.getItem('token');
-      if (savedToken) {
-        fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${savedToken}` }
-        })
-          .then(res => res.json())
-          .then(data => {
-            if (data.user) {
-              setUser(data.user);
-              setToken(savedToken);
-            } else {
-              localStorage.removeItem('token');
-            }
-          })
-          .catch(() => localStorage.removeItem('token'))
-          .finally(() => setIsLoading(false));
-      } else if (status !== 'loading') {
-        setIsLoading(false);
-      }
-    }
-  }, [session, status]);
-
-  const login = async (email: string, password: string) => {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    setUser(data.user);
-    setToken(data.token);
-    localStorage.setItem('token', data.token);
+  const login = async () => {
+    // Demo mode - always logged in
   };
 
-  const register = async (email: string, password: string, name: string) => {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    setUser(data.user);
-    setToken(data.token);
-    localStorage.setItem('token', data.token);
+  const register = async () => {
+    // Demo mode - always logged in
   };
 
-  const logout = async () => {
-    // Sign out from NextAuth if using OAuth
-    if (token === 'nextauth-session') {
-      await nextAuthSignOut({ redirect: false });
-    }
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
+  const logout = () => {
+    // Demo mode - no logout
   };
 
-  const resetPassword = async (email: string) => {
-    const res = await fetch('/api/auth/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+  const resetPassword = async () => {
+    // Demo mode - no-op
   };
 
   return (
