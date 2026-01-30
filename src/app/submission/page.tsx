@@ -5,10 +5,42 @@ import Link from 'next/link';
 import { 
   FileText, Upload, CheckCircle2, ArrowLeft, ArrowRight,
   FileCheck, Package, Sparkles, Users, AlertCircle,
-  ExternalLink, Plus, Trash2, User, Wand2, FileSearch, X, Copy, Check, AlertTriangle, XCircle
+  ExternalLink, Plus, Trash2, User, Wand2, FileSearch, X, Copy, Check, AlertTriangle, XCircle, RefreshCw, ThumbsUp, ThumbsDown, Eye
 } from 'lucide-react';
 
-type Step = 'choose' | 'team' | 'documents' | 'create' | 'review';
+type Step = 'choose' | 'team' | 'documents' | 'create' | 'review' | 'ai-review' | 'upload-docs';
+
+interface ReviewSuggestion {
+  id: string;
+  type: 'rewrite' | 'edit' | 'add' | 'remove';
+  original: string;
+  suggested: string;
+  reason: string;
+  priority: 'high' | 'medium' | 'low';
+  status?: 'pending' | 'accepted' | 'rejected';
+}
+
+interface SectionReview {
+  section: string;
+  score: number;
+  overallFeedback: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: ReviewSuggestion[];
+  nihCompliance: {
+    pageLimit: { passed: boolean; message: string };
+    formatting: { passed: boolean; message: string };
+    requiredElements: { passed: boolean; message: string };
+  };
+}
+
+interface UploadedDocument {
+  id: string;
+  section: string;
+  fileName: string;
+  content: string;
+  review?: SectionReview;
+}
 
 interface TeamMember {
   id: string;
@@ -41,6 +73,12 @@ export default function SubmissionPage() {
   const [copied, setCopied] = useState(false);
   const [validating, setValidating] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState<string | null>(null);
+  
+  // AI Review state
+  const [uploadedDocs, setUploadedDocs] = useState<UploadedDocument[]>([]);
+  const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
+  const [overallReviewScore, setOverallReviewScore] = useState<number | null>(null);
+  const [reviewSummary, setReviewSummary] = useState<string>('');
 
   const validateBiosketch = async (memberId: string, file: File) => {
     setValidating(memberId);
@@ -101,6 +139,16 @@ export default function SubmissionPage() {
     // "Starting from scratch" goes directly to the 8-module Grant Builder
     if (point === 'scratch') {
       window.location.href = '/grant-builder';
+      return;
+    }
+    // "Documents Ready for Review" goes to AI review
+    if (point === 'complete') {
+      setStep('ai-review');
+      return;
+    }
+    // "Have Some Documents" goes to upload step
+    if (point === 'partial') {
+      setStep('upload-docs');
       return;
     }
     setStep('team');
@@ -584,6 +632,455 @@ export default function SubmissionPage() {
               </button>
               <button onClick={() => setStep('review')} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
                 Continue to Review <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Upload Documents (for "Have Some Documents") */}
+        {step === 'upload-docs' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-start gap-3 mb-6">
+                <Upload className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Upload Your Documents</h2>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Upload documents by section or bulk upload. We'll route them to the right place for editing.
+                  </p>
+                </div>
+              </div>
+
+              {/* Bulk Upload */}
+              <div className="mb-6 p-4 border-2 border-dashed border-amber-300 rounded-xl bg-amber-50">
+                <div className="text-center">
+                  <Package className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+                  <p className="font-medium text-slate-800">Bulk Upload</p>
+                  <p className="text-sm text-slate-600 mb-3">Upload multiple files at once - we'll identify and sort them</p>
+                  <label className="inline-block px-4 py-2 bg-amber-600 text-white rounded-lg cursor-pointer hover:bg-amber-700">
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept=".pdf,.doc,.docx,.txt"
+                      className="hidden" 
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        files.forEach(file => {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const content = ev.target?.result as string || '';
+                            // Auto-detect section from filename
+                            let section = 'other';
+                            const fname = file.name.toLowerCase();
+                            if (fname.includes('aim')) section = 'specific_aims';
+                            else if (fname.includes('strategy') || fname.includes('approach')) section = 'research_strategy';
+                            else if (fname.includes('budget')) section = 'budget_justification';
+                            else if (fname.includes('facilit')) section = 'facilities';
+                            else if (fname.includes('commerc') || fname.includes('market')) section = 'commercialization';
+                            else if (fname.includes('biosket')) section = 'biosketch';
+                            
+                            setUploadedDocs(prev => [...prev, {
+                              id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                              section,
+                              fileName: file.name,
+                              content: content.slice(0, 50000) // Limit content size
+                            }]);
+                          };
+                          reader.readAsText(file);
+                        });
+                      }}
+                    />
+                    Select Files
+                  </label>
+                </div>
+              </div>
+
+              {/* Section-by-Section Upload */}
+              <h3 className="font-medium text-slate-900 mb-3">Or Upload by Section:</h3>
+              <div className="space-y-3">
+                {[
+                  { id: 'specific_aims', name: 'Specific Aims', desc: '1 page - Your research objectives and hypothesis', icon: '🎯' },
+                  { id: 'research_strategy', name: 'Research Strategy', desc: 'Up to 12 pages - Significance, Innovation, Approach', icon: '🔬' },
+                  { id: 'budget_justification', name: 'Budget & Justification', desc: 'Detailed costs and explanations', icon: '💰' },
+                  { id: 'facilities', name: 'Facilities & Equipment', desc: 'Available resources and lab space', icon: '🏢' },
+                  { id: 'commercialization', name: 'Commercialization Plan', desc: 'SBIR/STTR market analysis', icon: '📈' },
+                  { id: 'biosketch', name: 'Biosketches', desc: 'Team member biosketches', icon: '👤' },
+                ].map((section) => {
+                  const uploaded = uploadedDocs.find(d => d.section === section.id);
+                  return (
+                    <div key={section.id} className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-amber-300 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{section.icon}</span>
+                        <div>
+                          <p className="font-medium text-slate-900">{section.name}</p>
+                          <p className="text-sm text-slate-500">{section.desc}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {uploaded ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-green-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> {uploaded.fileName}
+                            </span>
+                            <button 
+                              onClick={() => setUploadedDocs(prev => prev.filter(d => d.id !== uploaded.id))}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg cursor-pointer hover:bg-slate-200 text-sm">
+                            <input 
+                              type="file" 
+                              accept=".pdf,.doc,.docx,.txt"
+                              className="hidden" 
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => {
+                                    setUploadedDocs(prev => [...prev, {
+                                      id: `doc-${Date.now()}`,
+                                      section: section.id,
+                                      fileName: file.name,
+                                      content: (ev.target?.result as string || '').slice(0, 50000)
+                                    }]);
+                                  };
+                                  reader.readAsText(file);
+                                }
+                              }}
+                            />
+                            Upload
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Uploaded Documents Summary */}
+              {uploadedDocs.length > 0 && (
+                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-medium text-green-800 mb-2">Uploaded: {uploadedDocs.length} document(s)</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {uploadedDocs.map(doc => (
+                      <span key={doc.id} className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm">
+                        {doc.fileName} → {doc.section.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between">
+              <button onClick={() => setStep('choose')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <button 
+                onClick={() => setStep('ai-review')} 
+                disabled={uploadedDocs.length === 0}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                Review with AI <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: AI Review (for "Documents Ready for Review" and after upload) */}
+        {step === 'ai-review' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-start gap-3 mb-6">
+                <Wand2 className="w-6 h-6 text-purple-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">AI Document Review</h2>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Upload documents for AI-powered review, scoring, and improvement suggestions.
+                  </p>
+                </div>
+              </div>
+
+              {/* Upload area if no docs yet */}
+              {uploadedDocs.length === 0 && (
+                <div className="mb-6">
+                  <div className="p-6 border-2 border-dashed border-purple-300 rounded-xl bg-purple-50 text-center">
+                    <Upload className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+                    <p className="font-medium text-slate-800 mb-2">Upload Documents for Review</p>
+                    <p className="text-sm text-slate-600 mb-4">Drag & drop or click to upload grant sections</p>
+                    <label className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg cursor-pointer hover:bg-purple-700">
+                      <input 
+                        type="file" 
+                        multiple 
+                        accept=".pdf,.doc,.docx,.txt"
+                        className="hidden" 
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          files.forEach(file => {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const content = ev.target?.result as string || '';
+                              let section = 'other';
+                              const fname = file.name.toLowerCase();
+                              if (fname.includes('aim')) section = 'specific_aims';
+                              else if (fname.includes('strategy')) section = 'research_strategy';
+                              else if (fname.includes('budget')) section = 'budget_justification';
+                              else if (fname.includes('facilit')) section = 'facilities';
+                              else if (fname.includes('commerc')) section = 'commercialization';
+                              
+                              setUploadedDocs(prev => [...prev, {
+                                id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                section,
+                                fileName: file.name,
+                                content: content.slice(0, 50000)
+                              }]);
+                            };
+                            reader.readAsText(file);
+                          });
+                        }}
+                      />
+                      Select Files
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Documents List with Review */}
+              {uploadedDocs.length > 0 && (
+                <div className="space-y-4">
+                  {/* Overall Score */}
+                  {overallReviewScore !== null && (
+                    <div className={`p-4 rounded-lg ${overallReviewScore <= 3 ? 'bg-green-50 border border-green-200' : overallReviewScore <= 5 ? 'bg-amber-50 border border-amber-200' : 'bg-red-50 border border-red-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-900">Overall Score: {overallReviewScore}/9</p>
+                          <p className="text-sm text-slate-600">{reviewSummary}</p>
+                        </div>
+                        <div className={`text-3xl font-bold ${overallReviewScore <= 3 ? 'text-green-600' : overallReviewScore <= 5 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {overallReviewScore <= 3 ? '🎯' : overallReviewScore <= 5 ? '⚠️' : '🔄'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Review All Button */}
+                  <button
+                    onClick={async () => {
+                      setReviewingDoc('all');
+                      try {
+                        const res = await fetch('/api/review-document', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ documents: uploadedDocs.map(d => ({ section: d.section, content: d.content })) })
+                        });
+                        const data = await res.json();
+                        if (data.reviews) {
+                          setUploadedDocs(prev => prev.map((doc, idx) => ({
+                            ...doc,
+                            review: data.reviews[idx]
+                          })));
+                          setOverallReviewScore(data.overallScore);
+                          setReviewSummary(data.summary);
+                        }
+                      } catch (err) {
+                        console.error('Review failed:', err);
+                      }
+                      setReviewingDoc(null);
+                    }}
+                    disabled={reviewingDoc === 'all'}
+                    className="w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {reviewingDoc === 'all' ? (
+                      <><RefreshCw className="w-5 h-5 animate-spin" /> Reviewing All Documents...</>
+                    ) : (
+                      <><Wand2 className="w-5 h-5" /> Review All Documents with AI</>
+                    )}
+                  </button>
+
+                  {/* Individual Documents */}
+                  {uploadedDocs.map((doc) => (
+                    <div key={doc.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                      <div className="p-4 bg-slate-50 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-slate-900">{doc.fileName}</p>
+                          <p className="text-sm text-slate-500">Section: {doc.section.replace('_', ' ')}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {doc.review && (
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              doc.review.score <= 3 ? 'bg-green-100 text-green-700' :
+                              doc.review.score <= 5 ? 'bg-amber-100 text-amber-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              Score: {doc.review.score}/9
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setUploadedDocs(prev => prev.filter(d => d.id !== doc.id))}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Review Results */}
+                      {doc.review && (
+                        <div className="p-4 space-y-4">
+                          {/* Feedback */}
+                          <div className="p-3 bg-slate-100 rounded-lg">
+                            <p className="text-sm text-slate-700">{doc.review.overallFeedback}</p>
+                          </div>
+
+                          {/* NIH Compliance */}
+                          <div className="grid grid-cols-3 gap-2">
+                            {Object.entries(doc.review.nihCompliance).map(([key, val]) => (
+                              <div key={key} className={`p-2 rounded text-xs ${val.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                {val.passed ? <Check className="w-3 h-3 inline mr-1" /> : <X className="w-3 h-3 inline mr-1" />}
+                                {val.message}
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Strengths & Weaknesses */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm font-medium text-green-700 mb-1">Strengths</p>
+                              <ul className="text-sm text-slate-600 space-y-1">
+                                {doc.review.strengths.map((s, i) => (
+                                  <li key={i} className="flex items-start gap-1">
+                                    <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" /> {s}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-red-700 mb-1">Weaknesses</p>
+                              <ul className="text-sm text-slate-600 space-y-1">
+                                {doc.review.weaknesses.map((w, i) => (
+                                  <li key={i} className="flex items-start gap-1">
+                                    <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" /> {w}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+
+                          {/* Suggestions with Accept/Reject */}
+                          {doc.review.suggestions.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-slate-900 mb-2">AI Suggestions</p>
+                              <div className="space-y-2">
+                                {doc.review.suggestions.map((suggestion) => (
+                                  <div key={suggestion.id} className={`p-3 rounded-lg border ${
+                                    suggestion.status === 'accepted' ? 'bg-green-50 border-green-200' :
+                                    suggestion.status === 'rejected' ? 'bg-slate-50 border-slate-200 opacity-50' :
+                                    suggestion.priority === 'high' ? 'bg-red-50 border-red-200' :
+                                    suggestion.priority === 'medium' ? 'bg-amber-50 border-amber-200' :
+                                    'bg-blue-50 border-blue-200'
+                                  }`}>
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                            suggestion.type === 'rewrite' ? 'bg-purple-100 text-purple-700' :
+                                            suggestion.type === 'add' ? 'bg-green-100 text-green-700' :
+                                            suggestion.type === 'edit' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-red-100 text-red-700'
+                                          }`}>
+                                            {suggestion.type}
+                                          </span>
+                                          <span className={`px-2 py-0.5 rounded text-xs ${
+                                            suggestion.priority === 'high' ? 'bg-red-100 text-red-700' :
+                                            suggestion.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                            'bg-slate-100 text-slate-700'
+                                          }`}>
+                                            {suggestion.priority} priority
+                                          </span>
+                                        </div>
+                                        <p className="text-sm text-slate-800">{suggestion.suggested}</p>
+                                        <p className="text-xs text-slate-500 mt-1">{suggestion.reason}</p>
+                                      </div>
+                                      {suggestion.status !== 'accepted' && suggestion.status !== 'rejected' && (
+                                        <div className="flex gap-1">
+                                          <button
+                                            onClick={() => {
+                                              setUploadedDocs(prev => prev.map(d => 
+                                                d.id === doc.id ? {
+                                                  ...d,
+                                                  review: d.review ? {
+                                                    ...d.review,
+                                                    suggestions: d.review.suggestions.map(s => 
+                                                      s.id === suggestion.id ? { ...s, status: 'accepted' as const } : s
+                                                    )
+                                                  } : d.review
+                                                } : d
+                                              ));
+                                            }}
+                                            className="p-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                                            title="Accept"
+                                          >
+                                            <ThumbsUp className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setUploadedDocs(prev => prev.map(d => 
+                                                d.id === doc.id ? {
+                                                  ...d,
+                                                  review: d.review ? {
+                                                    ...d.review,
+                                                    suggestions: d.review.suggestions.map(s => 
+                                                      s.id === suggestion.id ? { ...s, status: 'rejected' as const } : s
+                                                    )
+                                                  } : d.review
+                                                } : d
+                                              ));
+                                            }}
+                                            className="p-1.5 bg-slate-100 text-slate-700 rounded hover:bg-slate-200"
+                                            title="Reject"
+                                          >
+                                            <ThumbsDown className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      )}
+                                      {suggestion.status && (
+                                        <span className={`text-xs px-2 py-1 rounded ${
+                                          suggestion.status === 'accepted' ? 'bg-green-200 text-green-800' : 'bg-slate-200 text-slate-600'
+                                        }`}>
+                                          {suggestion.status}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Edit in Grant Builder */}
+                          <Link 
+                            href={`/grant-builder?module=${doc.section === 'specific_aims' ? 'aims' : doc.section === 'research_strategy' ? 'approach' : 'title'}`}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                          >
+                            <FileText className="w-4 h-4" /> Edit in Grant Builder
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between">
+              <button onClick={() => setStep(startingPoint === 'partial' ? 'upload-docs' : 'choose')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <button onClick={() => setStep('team')} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                Continue to Team <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
