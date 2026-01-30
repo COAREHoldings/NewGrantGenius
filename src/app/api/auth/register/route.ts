@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { hashPassword, createToken } from '@/lib/auth';
 
 const SUPABASE_URL = 'https://dvuhtfzsvcacyrlfettz.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dWh0ZnpzdmNhY3lybGZldHR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTY0OTc5NiwiZXhwIjoyMDg1MjI1Nzk2fQ.Ks2u1uP-JZL_N3hcIJKIVknAXhT6b1VJXRoJiqLBPvU';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dWh0ZnpzdmNhY3lybGZldHR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTY0OTc5NiwiZXhwIjoyMDg1MjI1Nzk2fQ.LwTr315VLD6hDogIQC7d7nzXMJIeZqodktpD5JHTLk0';
 
 export async function POST(request: NextRequest) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
