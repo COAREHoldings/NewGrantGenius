@@ -488,9 +488,24 @@ export default function SubmissionPage() {
               </div>
 
               <div className="space-y-3">
+                {/* Grant Builder - Primary CTA */}
+                <div className="p-4 border-2 border-indigo-300 bg-indigo-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-indigo-900">Grant Builder (Recommended)</p>
+                      <p className="text-sm text-indigo-700 mt-1">Guided 8-module workflow: Title, Hypothesis, Aims, Team, Approach, Budget, Data, Figures</p>
+                    </div>
+                    <Link href="/grant-builder" className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium">
+                      <Sparkles className="w-4 h-4" /> Start Builder
+                    </Link>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-500 text-center py-2">Or create individual sections:</p>
+
                 {[
-                  { name: 'Specific Aims', desc: '1 page - Define your research objectives and hypotheses', required: true, link: '/manuscript/new?section=aims' },
-                  { name: 'Research Strategy', desc: 'Up to 12 pages - Significance, Innovation, Approach', required: true, link: '/manuscript/new?section=strategy' },
+                  { name: 'Specific Aims', desc: '1 page - Define your research objectives and hypotheses', required: true, link: '/grant-builder?module=aims' },
+                  { name: 'Research Strategy', desc: 'Up to 12 pages - Significance, Innovation, Approach', required: true, link: '/grant-builder?module=approach' },
                   { name: 'Budget & Justification', desc: 'Detailed costs and explanations', required: true, link: '/budget' },
                   { name: 'Facilities & Equipment', desc: 'Describe available resources', required: true, link: '/manuscript/new?section=facilities' },
                   { name: 'Commercialization Plan', desc: 'SBIR/STTR market analysis and commercialization strategy', required: true, link: '/manuscript/new?section=commercialization' },
