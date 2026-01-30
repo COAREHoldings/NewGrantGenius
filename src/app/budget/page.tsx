@@ -540,6 +540,28 @@ function ReviewStep({ onBack }: { onBack: () => void }) {
           {warnings.map((issue, i) => <div key={i} className="flex gap-3 p-4 bg-amber-50 rounded-xl"><AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" /><div><p className="font-medium text-amber-800">{issue.category}</p><p className="text-sm text-amber-700">{issue.message}</p></div></div>)}
         </div>
       ) : <div className="flex gap-3 p-4 bg-green-50 rounded-xl"><CheckCircle className="w-5 h-5 text-success flex-shrink-0" /><div><p className="font-medium text-green-800">Budget Compliant</p><p className="text-sm text-green-700">No compliance issues detected</p></div></div>}
+      {(state.grantType.includes('sbir') || state.grantType.includes('sttr')) && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h3 className="font-semibold text-slate-900 mb-4">SBIR/STTR Work Distribution</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className={`p-4 rounded-lg ${totals.entityBreakdown.smallBusinessPercent >= (rule?.smallBusinessMinWork || 0) ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+              <p className={`text-2xl font-bold ${totals.entityBreakdown.smallBusinessPercent >= (rule?.smallBusinessMinWork || 0) ? 'text-green-700' : 'text-red-700'}`}>{(totals.entityBreakdown.smallBusinessPercent * 100).toFixed(1)}%</p>
+              <p className="text-sm text-slate-600">Small Business</p>
+              <p className="text-xs text-slate-500">Min: {((rule?.smallBusinessMinWork || 0) * 100).toFixed(0)}%</p>
+            </div>
+            <div className={`p-4 rounded-lg ${state.grantType.includes('sttr') ? (totals.entityBreakdown.researchInstitutionPercent >= (rule?.researchInstMinWork || 0) ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200') : 'bg-slate-50 border border-slate-200'}`}>
+              <p className={`text-2xl font-bold ${state.grantType.includes('sttr') ? (totals.entityBreakdown.researchInstitutionPercent >= (rule?.researchInstMinWork || 0) ? 'text-green-700' : 'text-red-700') : 'text-slate-700'}`}>{(totals.entityBreakdown.researchInstitutionPercent * 100).toFixed(1)}%</p>
+              <p className="text-sm text-slate-600">Research Institution</p>
+              {state.grantType.includes('sttr') && <p className="text-xs text-slate-500">Min: {((rule?.researchInstMinWork || 0) * 100).toFixed(0)}%</p>}
+            </div>
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+              <p className="text-2xl font-bold text-slate-700">{(totals.entityBreakdown.externalWorkPercent * 100).toFixed(1)}%</p>
+              <p className="text-sm text-slate-600">External Work</p>
+              <p className="text-xs text-slate-500">Max: {((rule?.subcontractLimit || 0) * 100).toFixed(0)}%</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-200"><h3 className="font-semibold text-slate-900">{state.projectTitle}</h3><p className="text-sm text-slate-500">{rule?.fullName} | {state.duration} months</p></div>
         <div className="divide-y divide-slate-200">
