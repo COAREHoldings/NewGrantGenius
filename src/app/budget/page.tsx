@@ -463,6 +463,40 @@ function ReviewStep({ onBack }: { onBack: () => void }) {
   const errors = issues.filter(i => i.type === 'error');
   const warnings = issues.filter(i => i.type === 'warning');
 
+  const [justification, setJustification] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [justificationError, setJustificationError] = useState<string | null>(null);
+
+  const generateJustification = async () => {
+    setIsGenerating(true);
+    setJustificationError(null);
+    try {
+      const response = await fetch('/api/budget/justification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state, totals, rule }),
+      });
+      if (!response.ok) throw new Error('Failed to generate justification');
+      const data = await response.json();
+      setJustification(data.justification);
+    } catch (err) {
+      setJustificationError('Failed to generate justification. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const copyJustification = () => {
+    navigator.clipboard.writeText(justification);
+  };
+
+  const downloadJustification = () => {
+    const blob = new Blob([justification], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${state.projectTitle.replace(/\s+/g, '_')}_justification.txt`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const exportJSON = () => {
     const data = { project: { title: state.projectTitle, grantType: state.grantType, grantName: rule?.fullName, duration: state.duration }, personnel: state.personnel, directCosts: state.directCosts, totals, compliance: { errors: errors.length, warnings: warnings.length, issues } };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -518,6 +552,24 @@ function ReviewStep({ onBack }: { onBack: () => void }) {
           <button onClick={exportJSON} className="flex flex-col items-center gap-2 p-4 border border-slate-200 rounded-xl hover:bg-slate-50"><Download className="w-6 h-6 text-primary-500" /><span className="font-medium text-slate-900">JSON</span><span className="text-xs text-slate-500">Full data export</span></button>
           <button onClick={exportCSV} className="flex flex-col items-center gap-2 p-4 border border-slate-200 rounded-xl hover:bg-slate-50"><Download className="w-6 h-6 text-primary-500" /><span className="font-medium text-slate-900">CSV</span><span className="text-xs text-slate-500">Spreadsheet format</span></button>
         </div>
+      </div>
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div><h3 className="font-semibold text-slate-900">AI Budget Justification</h3><p className="text-sm text-slate-500">Generate NIH/NCI compliant justification text</p></div>
+          <button onClick={generateJustification} disabled={isGenerating} className="px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+            {isGenerating ? <><span className="animate-spin">⏳</span> Generating...</> : <><FileText className="w-4 h-4" /> Generate</>}
+          </button>
+        </div>
+        {justificationError && <div className="p-4 bg-red-50 rounded-lg text-red-700 text-sm mb-4">{justificationError}</div>}
+        {justification && (
+          <div className="space-y-4">
+            <div className="bg-slate-50 rounded-lg p-4 max-h-96 overflow-y-auto"><pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans">{justification}</pre></div>
+            <div className="flex gap-3">
+              <button onClick={copyJustification} className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50">Copy to Clipboard</button>
+              <button onClick={downloadJustification} className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50">Download as TXT</button>
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex justify-between pt-4"><button onClick={onBack} className="px-6 py-3 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Back to Edit</button></div>
     </div>
