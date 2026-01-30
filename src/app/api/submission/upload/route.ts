@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 
+// Allow larger file uploads (50MB)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+// Increase body size limit for file uploads
+export const maxDuration = 60; // 60 seconds for large files
+
 // Document type detection based on filename/content
 function detectDocumentType(filename: string): string {
   const lower = filename.toLowerCase();

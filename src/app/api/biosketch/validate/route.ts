@@ -7,12 +7,44 @@ const NIH_BIOSKETCH_RULES = {
     'Personal Statement',
     'Positions, Scientific Appointments, and Honors',
     'Contribution to Science',
-    'Research Support and/or Scholastic Performance'
+    'Research Support'
   ],
+  alternativeSectionNames: {
+    'Personal Statement': ['personal statement', 'statement'],
+    'Positions, Scientific Appointments, and Honors': ['positions', 'appointments', 'honors', 'education'],
+    'Contribution to Science': ['contribution', 'contributions to science', 'scientific contributions'],
+    'Research Support': ['research support', 'scholastic performance', 'ongoing research', 'completed research']
+  },
   margins: '0.5 inch minimum',
-  font: 'Arial, Georgia, Helvetica, Palatino Linotype - 11pt minimum',
-  lineSpacing: 'Single-spaced acceptable'
+  fonts: ['Arial', 'Georgia', 'Helvetica', 'Palatino'],
+  minFontSize: 11
 };
+
+// Estimate page count from text (rough estimate: ~3000 chars per page)
+function estimatePageCount(text: string): number {
+  const charsPerPage = 3000;
+  return Math.ceil(text.length / charsPerPage);
+}
+
+// Check for required sections in text
+function checkSections(text: string): { found: string[]; missing: string[] } {
+  const lowerText = text.toLowerCase();
+  const found: string[] = [];
+  const missing: string[] = [];
+
+  for (const section of NIH_BIOSKETCH_RULES.requiredSections) {
+    const alternatives = NIH_BIOSKETCH_RULES.alternativeSectionNames[section as keyof typeof NIH_BIOSKETCH_RULES.alternativeSectionNames] || [section.toLowerCase()];
+    const isFound = alternatives.some(alt => lowerText.includes(alt.toLowerCase()));
+    
+    if (isFound) {
+      found.push(section);
+    } else {
+      missing.push(section);
+    }
+  }
+
+  return { found, missing };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,29 +56,109 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // In a production system, this would:
-    // 1. Parse the PDF/DOCX
-    // 2. Check against NIH format requirements
-    // 3. Return specific issues found
-    
-    // For now, return format guidelines and recommendations
+    const issues: string[] = [];
+    const warnings: string[] = [];
+    const passed: string[] = [];
+    let extractedText = '';
+
+    // Check file type
+    const fileName = file.name.toLowerCase();
+    const isPDF = fileName.endsWith('.pdf');
+    const isDoc = fileName.endsWith('.doc') || fileName.endsWith('.docx');
+
+    if (!isPDF && !isDoc) {
+      issues.push('File must be PDF or Word document (.pdf, .doc, .docx)');
+    }
+
+    // Check file size (should be reasonable for 5 pages)
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > 10) {
+      warnings.push(`File is ${fileSizeMB.toFixed(1)}MB - unusually large for a 5-page biosketch`);
+    } else {
+      passed.push('File size is reasonable');
+    }
+
+    // Try to parse PDF content
+    if (isPDF) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        
+        // Dynamic import for pdf-parse
+        const pdfParse = (await import('pdf-parse')).default;
+        const pdfData = await pdfParse(buffer);
+        
+        extractedText = pdfData.text;
+        const pageCount = pdfData.numpages;
+
+        // Check page count
+        if (pageCount > NIH_BIOSKETCH_RULES.maxPages) {
+          issues.push(`Document has ${pageCount} pages - NIH limit is ${NIH_BIOSKETCH_RULES.maxPages} pages`);
+        } else {
+          passed.push(`Page count OK (${pageCount}/${NIH_BIOSKETCH_RULES.maxPages} pages)`);
+        }
+
+        // Check for required sections
+        const { found, missing } = checkSections(extractedText);
+        
+        if (found.length > 0) {
+          passed.push(`Found sections: ${found.join(', ')}`);
+        }
+        
+        if (missing.length > 0) {
+          issues.push(`Missing or unclear sections: ${missing.join(', ')}`);
+        }
+
+        // Check for ORCID
+        if (extractedText.toLowerCase().includes('orcid') || /\d{4}-\d{4}-\d{4}-\d{4}/.test(extractedText)) {
+          passed.push('ORCID identifier found');
+        } else {
+          warnings.push('No ORCID identifier found - recommended by NIH');
+        }
+
+        // Check for eRA Commons ID
+        if (extractedText.toLowerCase().includes('era commons') || extractedText.toLowerCase().includes('commons id')) {
+          passed.push('eRA Commons reference found');
+        }
+
+      } catch (pdfError) {
+        console.error('PDF parsing error:', pdfError);
+        warnings.push('Could not fully parse PDF content - manual review recommended');
+      }
+    } else if (isDoc) {
+      warnings.push('Word documents cannot be fully validated - convert to PDF for complete analysis');
+    }
+
+    // Determine overall status
+    let status: 'valid' | 'needs_fixes' | 'needs_review' = 'valid';
+    if (issues.length > 0) {
+      status = 'needs_fixes';
+    } else if (warnings.length > 0) {
+      status = 'needs_review';
+    }
+
     const validation = {
       fileName: file.name,
       fileSize: file.size,
+      fileSizeMB: fileSizeMB.toFixed(2),
       memberName: memberName || 'Unknown',
-      status: 'needs_review',
+      status,
+      issues,
+      warnings,
+      passed,
       guidelines: NIH_BIOSKETCH_RULES,
-      recommendations: [
-        'Ensure document is 5 pages or less',
-        'Include all 4 required sections in order',
+      recommendations: issues.length > 0 || warnings.length > 0 ? [
+        ...(issues.some(i => i.includes('pages')) ? ['Reduce document to 5 pages or less'] : []),
+        ...(issues.some(i => i.includes('Missing')) ? ['Add all 4 required sections in order'] : []),
         'Use 11pt Arial, Helvetica, Palatino, or Georgia font',
         'Maintain 0.5 inch margins minimum',
-        'Personal Statement should describe your qualifications for this specific project',
-        'List up to 5 contributions to science with citations',
-        'Include current and recently completed research support'
-      ],
-      nihTemplate: 'https://grants.nih.gov/grants/forms/biosketch.htm',
-      scienceExpertsFormat: 'https://www.ncbi.nlm.nih.gov/sciencv/'
+        'Consider using SciENcv for proper NIH formatting'
+      ] : [],
+      resources: {
+        nihTemplate: 'https://grants.nih.gov/grants/forms/biosketch.htm',
+        sciencv: 'https://www.ncbi.nlm.nih.gov/sciencv/',
+        samples: 'https://grants.nih.gov/grants/forms/biosketch-sample.htm'
+      }
     };
 
     return NextResponse.json(validation);
@@ -84,7 +196,7 @@ export async function GET() {
     ],
     resources: {
       nihInstructions: 'https://grants.nih.gov/grants/forms/biosketch.htm',
-      scienceExperts: 'https://www.ncbi.nlm.nih.gov/sciencv/',
+      sciencv: 'https://www.ncbi.nlm.nih.gov/sciencv/',
       sampleBiosketches: 'https://grants.nih.gov/grants/forms/biosketch-sample.htm'
     }
   });

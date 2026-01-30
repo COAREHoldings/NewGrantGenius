@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { 
   FileText, Upload, CheckCircle2, ArrowLeft, ArrowRight,
   FileCheck, Package, Sparkles, Users, AlertCircle,
-  ExternalLink, Plus, Trash2, User, Wand2, FileSearch, X, Copy, Check
+  ExternalLink, Plus, Trash2, User, Wand2, FileSearch, X, Copy, Check, AlertTriangle, XCircle
 } from 'lucide-react';
 
-type Step = 'choose' | 'team' | 'documents' | 'review';
+type Step = 'choose' | 'team' | 'documents' | 'create' | 'review';
 
 interface TeamMember {
   id: string;
@@ -21,6 +21,12 @@ interface TeamMember {
   hasBiosketch: boolean;
   biosketchFile?: string;
   personalStatement?: string;
+  biosketchValidation?: {
+    status: 'valid' | 'needs_fixes' | 'needs_review';
+    issues: string[];
+    warnings: string[];
+    passed: string[];
+  };
 }
 
 export default function SubmissionPage() {
@@ -33,6 +39,48 @@ export default function SubmissionPage() {
   const [generatedStatement, setGeneratedStatement] = useState('');
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [validating, setValidating] = useState<string | null>(null);
+  const [showValidationModal, setShowValidationModal] = useState<string | null>(null);
+
+  const validateBiosketch = async (memberId: string, file: File) => {
+    setValidating(memberId);
+    const member = teamMembers.find(m => m.id === memberId);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('memberName', member?.name || '');
+      
+      const res = await fetch('/api/biosketch/validate', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setTeamMembers(teamMembers.map(m => 
+          m.id === memberId 
+            ? { 
+                ...m, 
+                hasBiosketch: true, 
+                biosketchFile: file.name,
+                biosketchValidation: {
+                  status: data.status,
+                  issues: data.issues || [],
+                  warnings: data.warnings || [],
+                  passed: data.passed || []
+                }
+              } 
+            : m
+        ));
+        setShowValidationModal(memberId);
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+    } finally {
+      setValidating(null);
+    }
+  };
 
   const addTeamMember = () => {
     if (!newMember.name.trim()) return;
@@ -50,6 +98,7 @@ export default function SubmissionPage() {
 
   const handleStartingPointSelect = (point: string) => {
     setStartingPoint(point);
+    // "Starting from scratch" skips document upload - goes to team then directly to creation
     setStep('team');
   };
 
@@ -114,8 +163,13 @@ export default function SubmissionPage() {
         {/* Progress Indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
-            {['Choose Path', 'Team Members', 'Documents', 'Review'].map((label, idx) => {
-              const steps: Step[] = ['choose', 'team', 'documents', 'review'];
+            {(startingPoint === 'scratch' 
+              ? ['Choose Path', 'Team Members', 'Create Sections', 'Review']
+              : ['Choose Path', 'Team Members', 'Documents', 'Review']
+            ).map((label, idx) => {
+              const steps: Step[] = startingPoint === 'scratch' 
+                ? ['choose', 'team', 'create', 'review']
+                : ['choose', 'team', 'documents', 'review'];
               const isActive = steps.indexOf(step) >= idx;
               const isCurrent = steps[idx] === step;
               return (
@@ -286,8 +340,8 @@ export default function SubmissionPage() {
               <button onClick={() => setStep('choose')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
-              <button onClick={() => setStep('documents')} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
-                Continue to Documents <ArrowRight className="w-4 h-4" />
+              <button onClick={() => setStep(startingPoint === 'scratch' ? 'create' : 'documents')} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                {startingPoint === 'scratch' ? 'Start Creating' : 'Continue to Documents'} <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -323,13 +377,30 @@ export default function SubmissionPage() {
                       </div>
                       
                       <div className="flex flex-wrap gap-2">
-                        <label className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-sm cursor-pointer hover:bg-slate-200 flex items-center gap-1">
-                          <Upload className="w-4 h-4" />
-                          <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={() => {
-                            setTeamMembers(teamMembers.map(m => m.id === member.id ? {...m, hasBiosketch: true} : m));
+                        <label className={`px-3 py-1.5 rounded-lg text-sm cursor-pointer flex items-center gap-1 ${validating === member.id ? 'bg-slate-200 cursor-wait' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                          {validating === member.id ? (
+                            <><div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div> Validating...</>
+                          ) : (
+                            <><Upload className="w-4 h-4" /> Upload & Validate Biosketch</>
+                          )}
+                          <input type="file" accept=".pdf,.doc,.docx" className="hidden" disabled={validating === member.id} onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) validateBiosketch(member.id, file);
                           }} />
-                          Upload Biosketch
                         </label>
+                        
+                        {member.biosketchValidation && (
+                          <button onClick={() => setShowValidationModal(member.id)} className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 ${
+                            member.biosketchValidation.status === 'valid' ? 'bg-green-100 text-green-700' :
+                            member.biosketchValidation.status === 'needs_fixes' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {member.biosketchValidation.status === 'valid' ? <CheckCircle2 className="w-4 h-4" /> :
+                             member.biosketchValidation.status === 'needs_fixes' ? <XCircle className="w-4 h-4" /> :
+                             <AlertTriangle className="w-4 h-4" />}
+                            View Results
+                          </button>
+                        )}
                         
                         <button onClick={() => generatePersonalStatement(member)} className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200 flex items-center gap-1">
                           <Wand2 className="w-4 h-4" /> Generate Personal Statement
@@ -402,6 +473,61 @@ export default function SubmissionPage() {
           </div>
         )}
 
+        {/* Step: Create Sections (for "Starting from Scratch") */}
+        {step === 'create' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-start gap-3 mb-6">
+                <Sparkles className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Create Your Grant Sections</h2>
+                  <p className="text-slate-600 text-sm mt-1">
+                    We'll guide you through creating each required section. Start with the most important ones.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { name: 'Specific Aims', desc: '1 page - Define your research objectives and hypotheses', required: true, link: '/manuscript/new?section=aims' },
+                  { name: 'Research Strategy', desc: 'Up to 12 pages - Significance, Innovation, Approach', required: true, link: '/manuscript/new?section=strategy' },
+                  { name: 'Budget & Justification', desc: 'Detailed costs and explanations', required: true, link: '/budget' },
+                  { name: 'Facilities & Equipment', desc: 'Describe available resources', required: true, link: '/manuscript/new?section=facilities' },
+                  { name: 'Commercialization Plan', desc: 'SBIR/STTR market analysis and commercialization strategy', required: true, link: '/manuscript/new?section=commercialization' },
+                ].map((section) => (
+                  <div key={section.name} className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-indigo-300 transition-colors">
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {section.name}
+                        {section.required && <span className="text-red-500 ml-1">*</span>}
+                      </p>
+                      <p className="text-sm text-slate-500">{section.desc}</p>
+                    </div>
+                    <Link href={section.link} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" /> Create
+                    </Link>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Tip:</strong> Start with Specific Aims - it's the foundation of your grant. Once approved, it guides all other sections.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <button onClick={() => setStep('team')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <button onClick={() => setStep('review')} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                Continue to Review <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Step 4: Review */}
         {step === 'review' && (
           <div className="space-y-6">
@@ -431,7 +557,7 @@ export default function SubmissionPage() {
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep('documents')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</button>
+              <button onClick={() => setStep(startingPoint === 'scratch' ? 'create' : 'documents')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</button>
               <button className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Finalize Submission</button>
             </div>
           </div>
@@ -470,6 +596,99 @@ export default function SubmissionPage() {
             </div>
           </div>
         )}
+
+        {/* Biosketch Validation Modal */}
+        {showValidationModal && (() => {
+          const member = teamMembers.find(m => m.id === showValidationModal);
+          const validation = member?.biosketchValidation;
+          if (!validation) return null;
+          
+          return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-auto">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-slate-900">Biosketch Validation Results</h3>
+                    <button onClick={() => setShowValidationModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                  </div>
+                  
+                  <div className={`p-4 rounded-lg mb-4 ${
+                    validation.status === 'valid' ? 'bg-green-50 border border-green-200' :
+                    validation.status === 'needs_fixes' ? 'bg-red-50 border border-red-200' :
+                    'bg-amber-50 border border-amber-200'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {validation.status === 'valid' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> :
+                       validation.status === 'needs_fixes' ? <XCircle className="w-5 h-5 text-red-600" /> :
+                       <AlertTriangle className="w-5 h-5 text-amber-600" />}
+                      <span className={`font-medium ${
+                        validation.status === 'valid' ? 'text-green-800' :
+                        validation.status === 'needs_fixes' ? 'text-red-800' :
+                        'text-amber-800'
+                      }`}>
+                        {validation.status === 'valid' ? 'Biosketch looks good!' :
+                         validation.status === 'needs_fixes' ? 'Issues found - fixes required' :
+                         'Review recommended'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {validation.issues.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-red-700 mb-2 flex items-center gap-1"><XCircle className="w-4 h-4" /> Issues to Fix</h4>
+                      <ul className="space-y-1">
+                        {validation.issues.map((issue, i) => (
+                          <li key={i} className="text-sm text-red-700 flex items-start gap-2">
+                            <span className="mt-1.5 w-1 h-1 bg-red-500 rounded-full flex-shrink-0"></span>
+                            {issue}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {validation.warnings.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-amber-700 mb-2 flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> Warnings</h4>
+                      <ul className="space-y-1">
+                        {validation.warnings.map((warning, i) => (
+                          <li key={i} className="text-sm text-amber-700 flex items-start gap-2">
+                            <span className="mt-1.5 w-1 h-1 bg-amber-500 rounded-full flex-shrink-0"></span>
+                            {warning}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {validation.passed.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-green-700 mb-2 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Passed Checks</h4>
+                      <ul className="space-y-1">
+                        {validation.passed.map((pass, i) => (
+                          <li key={i} className="text-sm text-green-700 flex items-start gap-2">
+                            <span className="mt-1.5 w-1 h-1 bg-green-500 rounded-full flex-shrink-0"></span>
+                            {pass}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                    <p className="text-xs text-slate-600">
+                      <strong>Need help formatting?</strong> Use <a href="https://www.ncbi.nlm.nih.gov/sciencv/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">SciENcv</a> (free NIH tool) to create properly formatted biosketches.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <button onClick={() => setShowValidationModal(null)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </main>
   );
