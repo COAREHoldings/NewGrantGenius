@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase-client';
-import { Mail, Lock, LogIn, UserPlus, AlertCircle, Sparkles } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, AlertCircle, Sparkles, User } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,19 +22,28 @@ export default function LoginPage() {
     setMessage('');
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        router.push('/');
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { name } }
-        });
-        if (error) throw error;
-        setMessage('Check your email to confirm your account!');
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+      const body = isLogin 
+        ? { email, password }
+        : { email, password, name };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Authentication failed');
       }
+
+      // Store token and user
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      router.push('/');
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {
@@ -51,15 +59,12 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo/Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900">Grant Master</h1>
           <p className="text-slate-600 mt-2">AI-Powered NIH Grant Application Platform</p>
         </div>
 
-        {/* Auth Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-          {/* Toggle */}
           <div className="flex bg-slate-100 rounded-lg p-1 mb-6">
             <button
               onClick={() => setIsLogin(true)}
@@ -79,7 +84,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Error/Message */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
               <AlertCircle className="w-4 h-4" />
@@ -92,19 +96,21 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleAuth} className="space-y-4">
             {!isLogin && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="Dr. Jane Smith"
-                  required={!isLogin}
-                />
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Dr. Jane Smith"
+                    required={!isLogin}
+                  />
+                </div>
               </div>
             )}
             <div>
@@ -130,7 +136,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="••••••••"
+                  placeholder="Min 6 characters"
                   required
                   minLength={6}
                 />
@@ -155,7 +161,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200"></div>
@@ -165,7 +170,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Demo Access */}
           <button
             onClick={handleDemoAccess}
             className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:opacity-90 flex items-center justify-center gap-2"
@@ -175,7 +179,6 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Footer */}
         <p className="text-center text-sm text-slate-500 mt-6">
           By continuing, you agree to our{' '}
           <Link href="/terms" className="text-indigo-600 hover:underline">Terms</Link> and{' '}

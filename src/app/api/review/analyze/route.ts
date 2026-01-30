@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import pdf from 'pdf-parse';
+import * as pdfParse from 'pdf-parse';
+const pdf = (pdfParse as unknown as { default: typeof pdfParse.default }).default || pdfParse;
 
 // NIH Review Criteria Sections
 const REVIEW_SECTIONS = [
