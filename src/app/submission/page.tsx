@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { 
   FileText, Upload, CheckCircle2, ArrowLeft, ArrowRight,
   FileCheck, Package, Sparkles, Users, AlertCircle,
-  ExternalLink, Plus, Trash2, User
+  ExternalLink, Plus, Trash2, User, Wand2, FileSearch, X, Copy, Check
 } from 'lucide-react';
 
 type Step = 'choose' | 'team' | 'documents' | 'review';
@@ -17,14 +17,22 @@ interface TeamMember {
   email: string;
   orcid?: string;
   institution?: string;
+  expertise?: string;
   hasBiosketch: boolean;
+  biosketchFile?: string;
+  personalStatement?: string;
 }
 
 export default function SubmissionPage() {
   const [step, setStep] = useState<Step>('choose');
   const [startingPoint, setStartingPoint] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [newMember, setNewMember] = useState({ name: '', role: 'Co-Investigator', email: '', orcid: '', institution: '' });
+  const [newMember, setNewMember] = useState({ name: '', role: 'Co-Investigator', email: '', orcid: '', institution: '', expertise: '' });
+  const [projectTitle, setProjectTitle] = useState('');
+  const [showStatementModal, setShowStatementModal] = useState<string | null>(null);
+  const [generatedStatement, setGeneratedStatement] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const addTeamMember = () => {
     if (!newMember.name.trim()) return;
@@ -33,7 +41,7 @@ export default function SubmissionPage() {
       ...newMember,
       hasBiosketch: false
     }]);
-    setNewMember({ name: '', role: 'Co-Investigator', email: '', orcid: '', institution: '' });
+    setNewMember({ name: '', role: 'Co-Investigator', email: '', orcid: '', institution: '', expertise: '' });
   };
 
   const removeTeamMember = (id: string) => {
@@ -42,13 +50,50 @@ export default function SubmissionPage() {
 
   const handleStartingPointSelect = (point: string) => {
     setStartingPoint(point);
-    if (point === 'scratch') {
-      // Go to team first, then will generate documents
-      setStep('team');
-    } else {
-      // Has documents - go to team, then upload
-      setStep('team');
+    setStep('team');
+  };
+
+  const generatePersonalStatement = async (member: TeamMember) => {
+    setShowStatementModal(member.id);
+    setGenerating(true);
+    setGeneratedStatement('');
+    
+    try {
+      const res = await fetch('/api/biosketch/generate-statement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: member.name,
+          role: member.role,
+          institution: member.institution,
+          expertise: member.expertise,
+          projectTitle: projectTitle
+        })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setGeneratedStatement(data.statement);
+      }
+    } catch (error) {
+      console.error('Error generating statement:', error);
+      setGeneratedStatement('Failed to generate statement. Please try again.');
+    } finally {
+      setGenerating(false);
     }
+  };
+
+  const copyStatement = () => {
+    navigator.clipboard.writeText(generatedStatement);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const saveStatement = (memberId: string) => {
+    setTeamMembers(teamMembers.map(m => 
+      m.id === memberId ? { ...m, personalStatement: generatedStatement } : m
+    ));
+    setShowStatementModal(null);
   };
 
   return (
@@ -98,10 +143,7 @@ export default function SubmissionPage() {
             <p className="text-slate-600 mb-6">This helps us guide you through the right process.</p>
             
             <div className="space-y-3">
-              <button
-                onClick={() => handleStartingPointSelect('scratch')}
-                className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-left transition-all"
-              >
+              <button onClick={() => handleStartingPointSelect('scratch')} className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-left transition-all">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-5 h-5 text-blue-600" />
@@ -113,10 +155,7 @@ export default function SubmissionPage() {
                 </div>
               </button>
 
-              <button
-                onClick={() => handleStartingPointSelect('partial')}
-                className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-left transition-all"
-              >
+              <button onClick={() => handleStartingPointSelect('partial')} className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-left transition-all">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Package className="w-5 h-5 text-amber-600" />
@@ -128,10 +167,7 @@ export default function SubmissionPage() {
                 </div>
               </button>
 
-              <button
-                onClick={() => handleStartingPointSelect('complete')}
-                className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-left transition-all"
-              >
+              <button onClick={() => handleStartingPointSelect('complete')} className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-left transition-all">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <FileCheck className="w-5 h-5 text-green-600" />
@@ -149,14 +185,25 @@ export default function SubmissionPage() {
         {/* Step 2: Team Members */}
         {step === 'team' && (
           <div className="space-y-6">
+            {/* Project Title */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 mb-3">Project Information</h2>
+              <input
+                type="text"
+                placeholder="Project Title (used for generating personal statements)"
+                value={projectTitle}
+                onChange={(e) => setProjectTitle(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
             <div className="bg-white rounded-xl border border-slate-200 p-6">
               <div className="flex items-start gap-3 mb-6">
                 <Users className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Grant Team Members</h2>
                   <p className="text-slate-600 text-sm mt-1">
-                    Add everyone involved in executing this grant: PI, Co-Investigators, Key Personnel, Consultants, etc.
-                    Each person will need a Biosketch for the submission.
+                    Add everyone involved in executing this grant. Each person will need a Biosketch.
                   </p>
                 </div>
               </div>
@@ -165,18 +212,8 @@ export default function SubmissionPage() {
               <div className="bg-slate-50 rounded-lg p-4 mb-6">
                 <h3 className="font-medium text-slate-900 mb-3">Add Team Member</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    placeholder="Full Name *"
-                    value={newMember.name}
-                    onChange={(e) => setNewMember({...newMember, name: e.target.value})}
-                    className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <select
-                    value={newMember.role}
-                    onChange={(e) => setNewMember({...newMember, role: e.target.value})}
-                    className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
+                  <input type="text" placeholder="Full Name *" value={newMember.name} onChange={(e) => setNewMember({...newMember, name: e.target.value})} className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <select value={newMember.role} onChange={(e) => setNewMember({...newMember, role: e.target.value})} className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="Principal Investigator">Principal Investigator (PI)</option>
                     <option value="Co-Investigator">Co-Investigator</option>
                     <option value="Key Personnel">Key Personnel</option>
@@ -184,48 +221,19 @@ export default function SubmissionPage() {
                     <option value="Collaborator">Collaborator</option>
                     <option value="Other">Other</option>
                   </select>
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={newMember.email}
-                    onChange={(e) => setNewMember({...newMember, email: e.target.value})}
-                    className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Institution/Organization"
-                    value={newMember.institution}
-                    onChange={(e) => setNewMember({...newMember, institution: e.target.value})}
-                    className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  <input type="email" placeholder="Email" value={newMember.email} onChange={(e) => setNewMember({...newMember, email: e.target.value})} className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" placeholder="Institution/Organization" value={newMember.institution} onChange={(e) => setNewMember({...newMember, institution: e.target.value})} className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" placeholder="Area of Expertise (e.g., molecular biology, data science)" value={newMember.expertise} onChange={(e) => setNewMember({...newMember, expertise: e.target.value})} className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 md:col-span-2" />
                   <div className="md:col-span-2">
                     <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="ORCID iD (e.g., 0000-0002-1234-5678)"
-                        value={newMember.orcid}
-                        onChange={(e) => setNewMember({...newMember, orcid: e.target.value})}
-                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                      <a 
-                        href="https://orcid.org/register" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="px-3 py-2 text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 whitespace-nowrap"
-                      >
+                      <input type="text" placeholder="ORCID iD (e.g., 0000-0002-1234-5678)" value={newMember.orcid} onChange={(e) => setNewMember({...newMember, orcid: e.target.value})} className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                      <a href="https://orcid.org/register" target="_blank" rel="noopener noreferrer" className="px-3 py-2 text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 whitespace-nowrap">
                         Get ORCID <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                      ORCID is a unique researcher identifier. Get one free at orcid.org if you don't have one.
-                    </p>
                   </div>
                 </div>
-                <button
-                  onClick={addTeamMember}
-                  disabled={!newMember.name.trim()}
-                  className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
+                <button onClick={addTeamMember} disabled={!newMember.name.trim()} className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                   <Plus className="w-4 h-4" /> Add to Team
                 </button>
               </div>
@@ -246,13 +254,9 @@ export default function SubmissionPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {member.orcid && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">ORCID</span>
-                        )}
-                        <button
-                          onClick={() => removeTeamMember(member.id)}
-                          className="p-1 text-slate-400 hover:text-red-600"
-                        >
+                        {member.orcid && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">ORCID</span>}
+                        {member.personalStatement && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Statement</span>}
+                        <button onClick={() => removeTeamMember(member.id)} className="p-1 text-slate-400 hover:text-red-600">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -267,37 +271,22 @@ export default function SubmissionPage() {
               )}
             </div>
 
-            {/* ORCID Help Box */}
+            {/* ORCID Help */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <h3 className="font-medium text-blue-900">What is ORCID?</h3>
-                  <p className="text-sm text-blue-800 mt-1">
-                    ORCID (Open Researcher and Contributor ID) is a unique identifier that distinguishes you from other researchers.
-                    NIH encourages including ORCID iDs in grant applications. To get one:
-                  </p>
-                  <ol className="text-sm text-blue-800 mt-2 list-decimal list-inside space-y-1">
-                    <li>Visit <a href="https://orcid.org/register" target="_blank" rel="noopener noreferrer" className="underline">orcid.org/register</a></li>
-                    <li>Create a free account with your email</li>
-                    <li>Your ORCID iD will look like: 0000-0002-1234-5678</li>
-                  </ol>
+                  <p className="text-sm text-blue-800 mt-1">ORCID is a unique researcher identifier. NIH encourages including it. Get one free at <a href="https://orcid.org/register" target="_blank" rel="noopener noreferrer" className="underline">orcid.org</a></p>
                 </div>
               </div>
             </div>
 
-            {/* Navigation */}
             <div className="flex justify-between">
-              <button
-                onClick={() => setStep('choose')}
-                className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2"
-              >
+              <button onClick={() => setStep('choose')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
-              <button
-                onClick={() => setStep('documents')}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-              >
+              <button onClick={() => setStep('documents')} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
                 Continue to Documents <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -307,119 +296,108 @@ export default function SubmissionPage() {
         {/* Step 3: Documents */}
         {step === 'documents' && (
           <div className="space-y-6">
+            {/* Biosketches */}
             <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <div className="flex items-start gap-3 mb-6">
-                <FileText className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 mb-4">
+                <User className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">Grant Documents</h2>
+                  <h2 className="text-lg font-semibold text-slate-900">Biographical Sketches</h2>
                   <p className="text-slate-600 text-sm mt-1">
-                    {startingPoint === 'scratch' 
-                      ? "We'll help you create each required document. Start with the sections you're ready to write."
-                      : "Upload your existing documents. We'll check them against NIH formatting requirements."
-                    }
+                    Each team member needs an NIH-format Biosketch (5 pages max). We can help format and generate personal statements.
                   </p>
                 </div>
               </div>
 
-              {/* Biosketches Section */}
-              <div className="mb-6">
-                <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
-                  <User className="w-4 h-4" /> Biographical Sketches (Biosketches)
-                </h3>
-                <p className="text-sm text-slate-600 mb-3">
-                  Each team member needs an NIH-format Biosketch. Upload existing ones or create new.
-                </p>
-                
-                <div className="space-y-2">
-                  {teamMembers.length > 0 ? teamMembers.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg">
-                      <div>
-                        <p className="font-medium text-slate-900">{member.name}</p>
-                        <p className="text-sm text-slate-500">{member.role}</p>
+              {teamMembers.length > 0 ? (
+                <div className="space-y-3">
+                  {teamMembers.map((member) => (
+                    <div key={member.id} className="p-4 border border-slate-200 rounded-lg">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-medium text-slate-900">{member.name}</p>
+                          <p className="text-sm text-slate-500">{member.role}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          {member.hasBiosketch && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Uploaded</span>}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <label className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm cursor-pointer hover:bg-indigo-200">
-                          <input type="file" accept=".pdf,.doc,.docx" className="hidden" />
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <label className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-sm cursor-pointer hover:bg-slate-200 flex items-center gap-1">
+                          <Upload className="w-4 h-4" />
+                          <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={() => {
+                            setTeamMembers(teamMembers.map(m => m.id === member.id ? {...m, hasBiosketch: true} : m));
+                          }} />
                           Upload Biosketch
                         </label>
+                        
+                        <button onClick={() => generatePersonalStatement(member)} className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200 flex items-center gap-1">
+                          <Wand2 className="w-4 h-4" /> Generate Personal Statement
+                        </button>
+                        
+                        <a href="https://www.ncbi.nlm.nih.gov/sciencv/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 flex items-center gap-1">
+                          <FileSearch className="w-4 h-4" /> Use SciENcv <ExternalLink className="w-3 h-3" />
+                        </a>
                       </div>
-                    </div>
-                  )) : (
-                    <p className="text-sm text-slate-500 italic">Add team members first to upload their biosketches.</p>
-                  )}
-                </div>
-
-                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-amber-800">
-                    <strong>Biosketch Format:</strong> NIH requires a specific format (5 pages max). 
-                    We'll check your uploaded biosketches and flag any formatting issues.
-                    <a href="https://grants.nih.gov/grants/forms/biosketch.htm" target="_blank" rel="noopener noreferrer" className="underline ml-1">
-                      View NIH Biosketch guidelines
-                    </a>
-                  </p>
-                </div>
-              </div>
-
-              {/* Other Documents */}
-              <div>
-                <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Grant Sections
-                </h3>
-                
-                <div className="space-y-2">
-                  {[
-                    { name: 'Specific Aims', desc: '1 page - Your research objectives', required: true },
-                    { name: 'Research Strategy', desc: 'Up to 12 pages - Significance, Innovation, Approach', required: true },
-                    { name: 'Budget & Justification', desc: 'Detailed costs and explanations', required: true },
-                    { name: 'Facilities & Equipment', desc: 'Available resources', required: true },
-                    { name: 'Letters of Support', desc: 'From collaborators, consultants', required: false },
-                    { name: 'Commercialization Plan', desc: 'SBIR/STTR specific - market analysis', required: true },
-                  ].map((doc) => (
-                    <div key={doc.name} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg">
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {doc.name}
-                          {doc.required && <span className="text-red-500 ml-1">*</span>}
-                        </p>
-                        <p className="text-sm text-slate-500">{doc.desc}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {startingPoint !== 'scratch' && (
-                          <label className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-sm cursor-pointer hover:bg-slate-200">
-                            <input type="file" accept=".pdf,.doc,.docx" className="hidden" />
-                            Upload
-                          </label>
-                        )}
-                        {startingPoint === 'scratch' && (
-                          <button className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">
-                            Create
-                          </button>
-                        )}
-                      </div>
+                      
+                      {member.personalStatement && (
+                        <div className="mt-3 p-3 bg-purple-50 rounded-lg">
+                          <p className="text-xs text-purple-700 font-medium mb-1">Generated Personal Statement:</p>
+                          <p className="text-sm text-slate-700">{member.personalStatement.substring(0, 200)}...</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-sm text-slate-500 italic py-4">Add team members in the previous step first.</p>
+              )}
 
-                <p className="text-xs text-slate-500 mt-3">
-                  * Required sections. Maximum file size: 50MB. Supported formats: PDF, DOC, DOCX
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  <strong>NIH Biosketch Format:</strong> 5 pages max, 11pt font (Arial/Helvetica/Georgia), 0.5" margins.
+                  <a href="https://grants.nih.gov/grants/forms/biosketch.htm" target="_blank" rel="noopener noreferrer" className="underline ml-1">View guidelines</a> |
+                  <a href="https://www.ncbi.nlm.nih.gov/sciencv/" target="_blank" rel="noopener noreferrer" className="underline ml-1">Use SciENcv (free NIH tool)</a>
                 </p>
               </div>
             </div>
 
-            {/* Navigation */}
+            {/* Grant Sections */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h3 className="font-medium text-slate-900 mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" /> Grant Sections
+              </h3>
+              
+              <div className="space-y-2">
+                {[
+                  { name: 'Specific Aims', desc: '1 page - Your research objectives', required: true },
+                  { name: 'Research Strategy', desc: 'Up to 12 pages - Significance, Innovation, Approach', required: true },
+                  { name: 'Budget & Justification', desc: 'Detailed costs and explanations', required: true },
+                  { name: 'Facilities & Equipment', desc: 'Available resources', required: true },
+                  { name: 'Letters of Support', desc: 'From collaborators, consultants', required: false },
+                  { name: 'Commercialization Plan', desc: 'SBIR/STTR specific - market analysis', required: true },
+                ].map((doc) => (
+                  <div key={doc.name} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg">
+                    <div>
+                      <p className="font-medium text-slate-900">{doc.name}{doc.required && <span className="text-red-500 ml-1">*</span>}</p>
+                      <p className="text-sm text-slate-500">{doc.desc}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {startingPoint !== 'scratch' ? (
+                        <label className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-sm cursor-pointer hover:bg-slate-200"><input type="file" accept=".pdf,.doc,.docx" className="hidden" />Upload</label>
+                      ) : (
+                        <button className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">Create</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-3">* Required. Max 50MB per file.</p>
+            </div>
+
             <div className="flex justify-between">
-              <button
-                onClick={() => setStep('team')}
-                className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-              <button
-                onClick={() => setStep('review')}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-              >
-                Review Submission <ArrowRight className="w-4 h-4" />
-              </button>
+              <button onClick={() => setStep('team')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</button>
+              <button onClick={() => setStep('review')} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">Review Submission <ArrowRight className="w-4 h-4" /></button>
             </div>
           </div>
         )}
@@ -432,39 +410,63 @@ export default function SubmissionPage() {
                 <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Review Your Submission</h2>
-                  <p className="text-slate-600 text-sm mt-1">
-                    Review all components before finalizing. We'll validate everything against NIH requirements.
-                  </p>
+                  <p className="text-slate-600 text-sm mt-1">Review all components before finalizing.</p>
                 </div>
               </div>
 
-              {/* Summary */}
               <div className="space-y-4">
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <h3 className="font-medium text-slate-900 mb-2">Team Members: {teamMembers.length}</h3>
                   {teamMembers.map(m => (
-                    <p key={m.id} className="text-sm text-slate-600">{m.name} - {m.role}</p>
+                    <div key={m.id} className="flex items-center justify-between text-sm py-1">
+                      <span>{m.name} - {m.role}</span>
+                      <div className="flex gap-1">
+                        {m.hasBiosketch && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Biosketch</span>}
+                        {m.personalStatement && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Statement</span>}
+                      </div>
+                    </div>
                   ))}
-                </div>
-
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <h3 className="font-medium text-slate-900 mb-2">Documents</h3>
-                  <p className="text-sm text-slate-500">Document validation will appear here</p>
                 </div>
               </div>
             </div>
 
-            {/* Navigation */}
             <div className="flex justify-between">
-              <button
-                onClick={() => setStep('documents')}
-                className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-              <button className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                Finalize Submission
-              </button>
+              <button onClick={() => setStep('documents')} className="px-4 py-2 text-slate-600 hover:text-slate-900 flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</button>
+              <button className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Finalize Submission</button>
+            </div>
+          </div>
+        )}
+
+        {/* Personal Statement Modal */}
+        {showStatementModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-900">Personal Statement Generator</h3>
+                  <button onClick={() => setShowStatementModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                
+                {generating ? (
+                  <div className="py-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                    <p className="text-slate-600">Generating personal statement...</p>
+                  </div>
+                ) : generatedStatement ? (
+                  <div>
+                    <div className="bg-slate-50 rounded-lg p-4 mb-4">
+                      <p className="text-slate-700 whitespace-pre-wrap">{generatedStatement}</p>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-4">This is a draft. Edit to match your specific qualifications and project details.</p>
+                    <div className="flex gap-2">
+                      <button onClick={copyStatement} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 flex items-center gap-2">
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? 'Copied!' : 'Copy'}
+                      </button>
+                      <button onClick={() => saveStatement(showStatementModal)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save to Profile</button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         )}
