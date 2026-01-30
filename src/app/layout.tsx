@@ -29,9 +29,9 @@ export default function RootLayout({
         <Providers>
           <AuthProvider>
             <ToastProvider>
+              <UpgradePrompt />
+              <Header />
               <ErrorBoundary>
-                <UpgradePrompt />
-                <Header />
                 <main className="pt-0">
                   {children}
                 </main>
