@@ -8,19 +8,20 @@ import { FileSpreadsheet, Clock, ArrowLeft, Check, Plus, Pencil, Trash2, X, Chev
 interface PersonnelItem { id: string; name: string; role: string; baseSalary: number; effortPercent: number; fringeRate: number; months: number; }
 interface DirectCostItem { id: string; category: 'equipment' | 'supplies' | 'travel' | 'consultant' | 'subcontract' | 'other'; description: string; amount: number; justification: string; }
 interface BudgetState { projectTitle: string; grantType: string; startDate: string; endDate: string; duration: number; personnel: PersonnelItem[]; directCosts: DirectCostItem[]; customFringeRate: number | null; customIndirectRate: number | null; }
-interface BudgetTotals { personnelSalaries: number; personnelFringe: number; personnelTotal: number; equipment: number; supplies: number; travel: number; consultants: number; subcontracts: number; otherDirect: number; totalDirectCosts: number; indirectBase: number; indirectCosts: number; totalBudget: number; }
+interface BudgetTotals { personnelSalaries: number; personnelFringe: number; personnelTotal: number; equipment: number; supplies: number; travel: number; consultants: number; subcontracts: number; otherDirect: number; totalDirectCosts: number; indirectBase: number; indirectCosts: number; totalBudget: number; entityBreakdown: EntityWorkBreakdown; }
 interface ComplianceIssue { type: 'error' | 'warning'; category: string; message: string; field?: string; }
 
 // Grant Rules
 const RULES_LAST_UPDATED = 'January 2026';
-interface GrantRule { id: string; name: string; fullName: string; maxBudget: number | null; subcontractLimit: number | null; salaryCapPerYear: number | null; fringeRate: number; indirectRate: number; indirectBase: 'MTDC' | 'TDC'; equipmentThreshold: number; notes: string[]; budgetEmphasis: string[]; typicalAllocation: Record<string, string>; }
+interface GrantRule { id: string; name: string; fullName: string; maxBudget: number | null; subcontractLimit: number | null; salaryCapPerYear: number | null; fringeRate: number; indirectRate: number; indirectBase: 'MTDC' | 'TDC'; equipmentThreshold: number; smallBusinessMinWork?: number; researchInstMinWork?: number; consultantDailyMax?: number; notes: string[]; budgetEmphasis: string[]; typicalAllocation: Record<string, string>; }
+interface EntityWorkBreakdown { smallBusinessPercent: number; researchInstitutionPercent: number; externalWorkPercent: number; }
 
 const GRANT_RULES: Record<string, GrantRule> = {
-  'sbir-phase1': { id: 'sbir-phase1', name: 'SBIR Phase I', fullName: 'Small Business Innovation Research - Phase I', maxBudget: 275000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $275,000', 'Subcontracts ≤33% of total'], budgetEmphasis: ['Feasibility demonstration', 'Proof-of-concept R&D', 'Minimal equipment (use existing)'], typicalAllocation: { personnel: '50-60%', supplies: '15-25%', subcontracts: '10-33%', travel: '2-5%' } },
-  'sbir-phase2': { id: 'sbir-phase2', name: 'SBIR Phase II', fullName: 'Small Business Innovation Research - Phase II', maxBudget: 1750000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $1,750,000', 'Subcontracts ≤33% of total'], budgetEmphasis: ['Full R&D and prototyping', 'Commercialization planning', 'Equipment for scale-up'], typicalAllocation: { personnel: '45-55%', equipment: '10-20%', supplies: '15-20%', subcontracts: '10-25%' } },
+  'sbir-phase1': { id: 'sbir-phase1', name: 'SBIR Phase I', fullName: 'Small Business Innovation Research - Phase I', maxBudget: 275000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, smallBusinessMinWork: 0.67, consultantDailyMax: 750, notes: ['Maximum award: $275,000', 'Small business ≥67% of work', 'Subcontracts ≤33% of total'], budgetEmphasis: ['Feasibility demonstration', 'Proof-of-concept R&D', 'Minimal equipment (use existing)'], typicalAllocation: { personnel: '50-60%', supplies: '15-25%', subcontracts: '10-33%', travel: '2-5%' } },
+  'sbir-phase2': { id: 'sbir-phase2', name: 'SBIR Phase II', fullName: 'Small Business Innovation Research - Phase II', maxBudget: 1750000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, smallBusinessMinWork: 0.50, consultantDailyMax: 750, notes: ['Maximum award: $1,750,000', 'Small business ≥50% of work', 'Subcontracts ≤33% of total'], budgetEmphasis: ['Full R&D and prototyping', 'Commercialization planning', 'Equipment for scale-up'], typicalAllocation: { personnel: '45-55%', equipment: '10-20%', supplies: '15-20%', subcontracts: '10-25%' } },
   'sbir-fasttrack': { id: 'sbir-fasttrack', name: 'SBIR Fast Track', fullName: 'Small Business Innovation Research - Fast Track (Phase I/II)', maxBudget: 2025000, subcontractLimit: 0.33, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Phase I: $275K + Phase II: $1.75M', 'Single application', 'Must meet Phase I milestones'], budgetEmphasis: ['Clear Phase I/II budget split', 'Milestone-driven spending', 'Commercialization-ready by end'], typicalAllocation: { personnel: '50-55%', equipment: '8-15%', supplies: '15-20%', subcontracts: '15-30%' } },
-  'sttr-phase1': { id: 'sttr-phase1', name: 'STTR Phase I', fullName: 'Small Business Technology Transfer - Phase I', maxBudget: 275000, subcontractLimit: 0.40, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $275,000', 'Research institution ≥30% of work', 'Subcontracts can be ≤40%'], budgetEmphasis: ['Strong academic collaboration', 'Leverage university resources', 'Technology transfer focus'], typicalAllocation: { personnel: '40-50%', subcontracts: '30-40%', supplies: '10-20%', travel: '3-5%' } },
-  'sttr-phase2': { id: 'sttr-phase2', name: 'STTR Phase II', fullName: 'Small Business Technology Transfer - Phase II', maxBudget: 1750000, subcontractLimit: 0.40, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Maximum award: $1,750,000', 'Research institution ≥30% of work'], budgetEmphasis: ['Continued university partnership', 'Scale technology from lab', 'Bridge academic to commercial'], typicalAllocation: { personnel: '40-50%', subcontracts: '30-40%', equipment: '10-15%', supplies: '10-15%' } },
+  'sttr-phase1': { id: 'sttr-phase1', name: 'STTR Phase I', fullName: 'Small Business Technology Transfer - Phase I', maxBudget: 275000, subcontractLimit: 0.40, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, smallBusinessMinWork: 0.40, researchInstMinWork: 0.30, consultantDailyMax: 750, notes: ['Maximum award: $275,000', 'Small business ≥40% of work', 'Research institution ≥30% of work'], budgetEmphasis: ['Strong academic collaboration', 'Leverage university resources', 'Technology transfer focus'], typicalAllocation: { personnel: '40-50%', subcontracts: '30-40%', supplies: '10-20%', travel: '3-5%' } },
+  'sttr-phase2': { id: 'sttr-phase2', name: 'STTR Phase II', fullName: 'Small Business Technology Transfer - Phase II', maxBudget: 1750000, subcontractLimit: 0.40, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, smallBusinessMinWork: 0.40, researchInstMinWork: 0.30, consultantDailyMax: 750, notes: ['Maximum award: $1,750,000', 'Small business ≥40% of work', 'Research institution ≥30% of work'], budgetEmphasis: ['Continued university partnership', 'Scale technology from lab', 'Bridge academic to commercial'], typicalAllocation: { personnel: '40-50%', subcontracts: '30-40%', equipment: '10-15%', supplies: '10-15%' } },
   'sttr-fasttrack': { id: 'sttr-fasttrack', name: 'STTR Fast Track', fullName: 'Small Business Technology Transfer - Fast Track (Phase I/II)', maxBudget: 2025000, subcontractLimit: 0.40, salaryCapPerYear: null, fringeRate: 0.30, indirectRate: 0.50, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Phase I: $275K + Phase II: $1.75M', 'Research institution ≥30% of work'], budgetEmphasis: ['Sustained research partnership', 'Phased technology development', 'Clear IP transfer plan'], typicalAllocation: { personnel: '40-50%', subcontracts: '30-40%', equipment: '8-12%', supplies: '10-15%' } },
   r01: { id: 'r01', name: 'NIH R01', fullName: 'NIH Research Project Grant (R01)', maxBudget: 250000, subcontractLimit: null, salaryCapPerYear: 228000, fringeRate: 0.32, indirectRate: 0.55, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Modular: $250K/year direct costs', 'Salary Cap: $228,000 (Jan 2026)'], budgetEmphasis: ['Heavy personnel investment', 'Research trainees encouraged', 'Rigorous scientific methods'], typicalAllocation: { personnel: '60-75%', supplies: '15-25%', travel: '3-5%', equipment: '0-10%' } },
   nci: { id: 'nci', name: 'NCI R01', fullName: 'National Cancer Institute Research Project Grant (R01)', maxBudget: 250000, subcontractLimit: null, salaryCapPerYear: 228000, fringeRate: 0.32, indirectRate: 0.55, indirectBase: 'MTDC', equipmentThreshold: 5000, notes: ['Modular: $250K/year direct costs', 'Salary Cap: $228,000', 'Cancer-specific focus'], budgetEmphasis: ['Cancer research expertise', 'Biospecimen costs common', 'Multi-site collaborations valued'], typicalAllocation: { personnel: '60-70%', supplies: '15-25%', travel: '3-5%', subcontracts: '5-15%' } },
@@ -81,12 +82,22 @@ function calculateBudgetTotals(state: BudgetState): BudgetTotals {
   let indirectBase = totalDirectCosts;
   if (rule?.indirectBase === 'MTDC') {
     indirectBase -= equipment;
-    indirectBase -= Math.max(0, subcontracts - 25000);
+    state.directCosts.filter(c => c.category === 'subcontract').forEach(sub => {
+      if (sub.amount > 25000) indirectBase -= (sub.amount - 25000);
+    });
   }
   const indirectCosts = indirectBase * indirectRate;
   const totalBudget = totalDirectCosts + indirectCosts;
 
-  return { personnelSalaries, personnelFringe, personnelTotal, equipment, supplies, travel, consultants, subcontracts, otherDirect, totalDirectCosts, indirectBase, indirectCosts, totalBudget };
+  const externalWork = consultants + subcontracts;
+  const smallBusinessWork = personnelTotal + equipment + supplies + travel + otherDirect;
+  const entityBreakdown: EntityWorkBreakdown = {
+    smallBusinessPercent: totalBudget > 0 ? smallBusinessWork / totalBudget : 0,
+    researchInstitutionPercent: totalBudget > 0 ? subcontracts / totalBudget : 0,
+    externalWorkPercent: totalBudget > 0 ? externalWork / totalBudget : 0,
+  };
+
+  return { personnelSalaries, personnelFringe, personnelTotal, equipment, supplies, travel, consultants, subcontracts, otherDirect, totalDirectCosts, indirectBase, indirectCosts, totalBudget, entityBreakdown };
 }
 
 function validateCompliance(state: BudgetState, totals: BudgetTotals): ComplianceIssue[] {
@@ -97,11 +108,17 @@ function validateCompliance(state: BudgetState, totals: BudgetTotals): Complianc
   if (rule.maxBudget && totals.totalBudget > rule.maxBudget) {
     issues.push({ type: 'error', category: 'Budget Cap', message: `Total budget (${formatCurrency(totals.totalBudget)}) exceeds maximum allowed (${formatCurrency(rule.maxBudget)})` });
   }
-  if (rule.subcontractLimit && totals.subcontracts > 0) {
-    const subcontractPercent = totals.subcontracts / totals.totalBudget;
-    if (subcontractPercent > rule.subcontractLimit) {
-      issues.push({ type: 'error', category: 'Subcontract Limit', message: `Subcontracts (${(subcontractPercent * 100).toFixed(1)}%) exceed ${(rule.subcontractLimit * 100).toFixed(0)}% limit` });
+  if (rule.subcontractLimit && (totals.subcontracts + totals.consultants) > 0) {
+    const externalPercent = (totals.subcontracts + totals.consultants) / totals.totalBudget;
+    if (externalPercent > rule.subcontractLimit) {
+      issues.push({ type: 'error', category: 'External Work Limit', message: `External work (${(externalPercent * 100).toFixed(1)}%) exceeds ${(rule.subcontractLimit * 100).toFixed(0)}% limit` });
     }
+  }
+  if (rule.smallBusinessMinWork && totals.entityBreakdown.smallBusinessPercent < rule.smallBusinessMinWork) {
+    issues.push({ type: 'error', category: 'Small Business Work', message: `Small business work (${(totals.entityBreakdown.smallBusinessPercent * 100).toFixed(1)}%) must be ≥${(rule.smallBusinessMinWork * 100).toFixed(0)}%` });
+  }
+  if (rule.researchInstMinWork && totals.entityBreakdown.researchInstitutionPercent < rule.researchInstMinWork) {
+    issues.push({ type: 'error', category: 'Research Institution', message: `Research institution work (${(totals.entityBreakdown.researchInstitutionPercent * 100).toFixed(1)}%) must be ≥${(rule.researchInstMinWork * 100).toFixed(0)}% for STTR` });
   }
   if (rule.salaryCapPerYear) {
     state.personnel.forEach((p) => {
