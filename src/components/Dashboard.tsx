@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import ApplicationList from './ApplicationList';
-import { FileText, BookOpen, CheckSquare, Rocket, ArrowRight, Lightbulb } from 'lucide-react';
+import { FileText, BookOpen, CheckSquare, Rocket, ArrowRight, Lightbulb, Mail, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -113,6 +113,35 @@ export default function Dashboard() {
             </div>
             <p className="text-xs text-slate-500 mt-2">Export formatted for eRA Commons submission</p>
           </div>
+        </div>
+      </div>
+
+      {/* Additional Tools */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Additional Tools</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link href="/letters" className="bg-white rounded-lg border border-slate-200 p-4 hover:border-indigo-300 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Mail className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">Letters Generator</p>
+                <p className="text-sm text-slate-500">Create support letters, consultant agreements, vendor quotes</p>
+              </div>
+            </div>
+          </Link>
+          <Link href="/regulatory" className="bg-white rounded-lg border border-slate-200 p-4 hover:border-indigo-300 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Shield className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">Regulatory Sections</p>
+                <p className="text-sm text-slate-500">Human Subjects, Vertebrate Animals compliance sections</p>
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
 
