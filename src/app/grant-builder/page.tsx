@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 import { 
   ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, Lightbulb,
   Target, FlaskConical, Users, FileText, DollarSign, Database,
@@ -108,6 +109,7 @@ const FUNDING_MECHANISMS = [
 ];
 
 export default function GrantBuilderPage() {
+  const { checkDemoFeature } = useAuth();
   const [currentModule, setCurrentModule] = useState<Module>('title');
   const [mode, setMode] = useState<'create' | 'validate'>('create');
   const [grantData, setGrantData] = useState<GrantData>({
@@ -220,6 +222,7 @@ export default function GrantBuilderPage() {
   };
 
   const generateGapStatement = async () => {
+    if (!checkDemoFeature('AI Generation')) return;
     setGenerating(true);
     try {
       const res = await fetch('/api/grant-builder/generate', {
@@ -251,6 +254,7 @@ export default function GrantBuilderPage() {
   };
 
   const generateHypothesis = async () => {
+    if (!checkDemoFeature('AI Generation')) return;
     setGenerating(true);
     try {
       const res = await fetch('/api/grant-builder/generate', {
