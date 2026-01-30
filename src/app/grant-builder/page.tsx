@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, Lightbulb,
   Target, FlaskConical, Users, FileText, DollarSign, Database,
-  BarChart3, Image, Check, X, ChevronDown, ChevronUp
+  BarChart3, Image, Check, X, ChevronDown, ChevronUp, RefreshCw
 } from 'lucide-react';
 
 type Module = 'title' | 'hypothesis' | 'aims' | 'collaborators' | 'approach' | 'budget' | 'data' | 'figure';
@@ -142,6 +142,8 @@ export default function GrantBuilderPage() {
   });
   const [generating, setGenerating] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [generatedFigure, setGeneratedFigure] = useState<{ imageUrl?: string; prompt?: string; message?: string } | null>(null);
+  const [figureGenerating, setFigureGenerating] = useState(false);
 
   const modules: { id: Module; name: string; icon: React.ReactNode; description: string }[] = [
     { id: 'title', name: 'Title & Concept', icon: <Lightbulb className="w-5 h-5" />, description: 'Define your research concept and knowledge gaps' },
@@ -1127,9 +1129,9 @@ export default function GrantBuilderPage() {
 
                 {/* Summary Figure Generator */}
                 <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-200 p-6">
-                  <h3 className="font-semibold text-slate-900 mb-2">Summary Figure Generator</h3>
+                  <h3 className="font-semibold text-slate-900 mb-2">AI Summary Figure Generator</h3>
                   <p className="text-sm text-slate-600 mb-4">
-                    Based on your grant structure, generate a conceptual summary schematic.
+                    Use AI to generate a conceptual summary schematic that visualizes your entire grant.
                   </p>
                   <div className="bg-white rounded-lg p-4 mb-4">
                     <h4 className="text-sm font-medium text-slate-700 mb-2">Your Grant Structure:</h4>
@@ -1141,14 +1143,80 @@ export default function GrantBuilderPage() {
                     </ul>
                   </div>
                   <button 
-                    disabled={!grantData.centralHypothesis || grantData.aims.length === 0}
+                    disabled={!grantData.centralHypothesis || grantData.aims.length === 0 || figureGenerating}
+                    onClick={async () => {
+                      setFigureGenerating(true);
+                      setGeneratedFigure(null);
+                      try {
+                        const res = await fetch('/api/grant-builder/generate-figure', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            hypothesis: grantData.centralHypothesis,
+                            aims: grantData.aims,
+                            gapStatement: grantData.gapStatement,
+                            diseaseArea: grantData.diseaseArea,
+                            target: grantData.biologicalTarget,
+                            title: grantData.workingTitle || grantData.refinedTitle
+                          })
+                        });
+                        const data = await res.json();
+                        setGeneratedFigure(data);
+                      } catch (err) {
+                        setGeneratedFigure({ message: 'Failed to generate figure. Please try again.' });
+                      }
+                      setFigureGenerating(false);
+                    }}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    <Image className="w-4 h-4" />
-                    Generate Summary Schematic
+                    {figureGenerating ? (
+                      <><RefreshCw className="w-4 h-4 animate-spin" /> Generating...</>
+                    ) : (
+                      <><Image className="w-4 h-4" /> Generate AI Summary Figure</>
+                    )}
                   </button>
                   {(!grantData.centralHypothesis || grantData.aims.length === 0) && (
                     <p className="text-xs text-amber-600 mt-2">Complete hypothesis and aims first to generate summary figure.</p>
+                  )}
+
+                  {/* Display Generated Figure */}
+                  {generatedFigure && (
+                    <div className="mt-6 border-t border-purple-200 pt-4">
+                      {generatedFigure.imageUrl ? (
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-slate-900">Generated Summary Figure:</h4>
+                          <img 
+                            src={generatedFigure.imageUrl} 
+                            alt="AI Generated Summary Figure" 
+                            className="w-full rounded-lg border border-slate-200 shadow-sm"
+                          />
+                          <div className="flex gap-2">
+                            <a 
+                              href={generatedFigure.imageUrl} 
+                              download="grant-summary-figure.png"
+                              className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                            >
+                              Download Figure
+                            </a>
+                            <button 
+                              onClick={() => setGeneratedFigure(null)}
+                              className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded text-sm hover:bg-slate-300"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-slate-900">AI Prompt for Figure Generation:</h4>
+                          <p className="text-sm text-slate-600">{generatedFigure.message}</p>
+                          <div className="bg-slate-50 p-3 rounded-lg">
+                            <p className="text-xs font-mono text-slate-700 whitespace-pre-wrap">{generatedFigure.prompt}</p>
+                          </div>
+                          <p className="text-xs text-slate-500">Copy this prompt to use with DALL-E, Midjourney, or other AI image tools.</p>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
