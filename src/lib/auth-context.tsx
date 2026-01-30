@@ -41,14 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [upgradePromptFeature, setUpgradePromptFeature] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check demo mode
-    const demoMode = localStorage.getItem('grantmaster_demo_mode') === 'true';
-    setIsDemo(demoMode);
-
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      // Demo mode: true if no session OR explicitly set in localStorage
+      const demoFromStorage = localStorage.getItem('grantmaster_demo_mode') === 'true';
+      setIsDemo(!session || demoFromStorage);
       setLoading(false);
     });
 
@@ -56,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setIsDemo(!session);
       setLoading(false);
     });
 
