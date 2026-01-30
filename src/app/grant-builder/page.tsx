@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, Lightbulb,
   Target, FlaskConical, Users, FileText, DollarSign, Database,
-  BarChart3, Image, Check, X, ChevronDown, ChevronUp, RefreshCw
+  BarChart3, Image, Check, X, ChevronDown, ChevronUp, RefreshCw,
+  Download, Save, History, Settings
 } from 'lucide-react';
 
 type Module = 'title' | 'hypothesis' | 'aims' | 'collaborators' | 'approach' | 'budget' | 'data' | 'figure';
@@ -144,6 +145,58 @@ export default function GrantBuilderPage() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [generatedFigure, setGeneratedFigure] = useState<{ imageUrl?: string; prompt?: string; message?: string } | null>(null);
   const [figureGenerating, setFigureGenerating] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // Load AI preference from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('grantmaster_ai_enabled');
+    if (saved !== null) setAiEnabled(saved === 'true');
+  }, []);
+
+  // Save AI preference
+  useEffect(() => {
+    localStorage.setItem('grantmaster_ai_enabled', String(aiEnabled));
+  }, [aiEnabled]);
+
+  // Save version
+  const saveVersion = async () => {
+    const timestamp = new Date().toISOString();
+    const version = { timestamp, data: grantData };
+    const versions = JSON.parse(localStorage.getItem('grantmaster_versions') || '[]');
+    versions.push(version);
+    localStorage.setItem('grantmaster_versions', JSON.stringify(versions.slice(-10))); // Keep last 10
+    alert('Version saved!');
+  };
+
+  // Export grant
+  const handleExport = async (format: 'pdf' | 'docx') => {
+    setExporting(true);
+    try {
+      const sections = [
+        { id: 'title', title: 'Title & Concept', content: `${grantData.refinedTitle || grantData.workingTitle}\n\n${grantData.gapStatement}\n\n${grantData.impactParagraph}`, order: 1 },
+        { id: 'hypothesis', title: 'Central Hypothesis', content: grantData.centralHypothesis, order: 2 },
+        { id: 'aims', title: 'Specific Aims', content: grantData.aims.map((a, i) => `Aim ${i+1}: ${a.scientificQuestion}\nExpected Outcome: ${a.expectedOutcome}`).join('\n\n'), order: 3 },
+      ];
+      const res = await fetch('/api/export-grant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grantPackage: { applicationId: 'draft', title: grantData.refinedTitle || grantData.workingTitle || 'Grant Draft', principalInvestigator: '', institution: '', fundingAgency: grantData.fundingMechanism, sections, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          options: { format, includeTableOfContents: true, includePageNumbers: true, includeCoverPage: true }
+        })
+      });
+      if (res.ok) {
+        const result = await res.json();
+        const blob = new Blob([result.content], { type: format === 'pdf' ? 'text/html' : 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = result.filename; a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) { console.error('Export error:', e); }
+    finally { setExporting(false); setShowExportModal(false); }
+  };
 
   const modules: { id: Module; name: string; icon: React.ReactNode; description: string }[] = [
     { id: 'title', name: 'Title & Concept', icon: <Lightbulb className="w-5 h-5" />, description: 'Define your research concept and knowledge gaps' },
@@ -290,23 +343,50 @@ export default function GrantBuilderPage() {
               <h1 className="text-2xl font-bold text-slate-900">Grant Builder</h1>
               <p className="text-slate-600 mt-1">Structured grant development with validation at every step</p>
             </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setMode('create')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  mode === 'create' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                Create Mode
-              </button>
-              <button 
-                onClick={() => setMode('validate')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  mode === 'validate' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                Validate Mode
-              </button>
+            <div className="flex items-center gap-4">
+              {/* AI Toggle */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg">
+                <span className="text-sm text-slate-600">AI</span>
+                <button
+                  onClick={() => setAiEnabled(!aiEnabled)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${aiEnabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${aiEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                </button>
+                <span className={`text-xs font-medium ${aiEnabled ? 'text-indigo-600' : 'text-slate-400'}`}>{aiEnabled ? 'ON' : 'OFF'}</span>
+              </div>
+              
+              {/* Mode Buttons */}
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setMode('create')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'create' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  Create Mode
+                </button>
+                <button 
+                  onClick={() => setMode('validate')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'validate' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  Validate Mode
+                </button>
+              </div>
+              
+              {/* Save & Export */}
+              <div className="flex gap-2">
+                <button
+                  onClick={saveVersion}
+                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg" title="Save Version"
+                >
+                  <Save className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg" title="Export"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1242,6 +1322,39 @@ export default function GrantBuilderPage() {
           </div>
         </div>
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Export Grant Document</h3>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleExport('pdf')}
+                disabled={exporting}
+                className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Download className="w-5 h-5" />
+                {exporting ? 'Exporting...' : 'Export as PDF (HTML)'}
+              </button>
+              <button
+                onClick={() => handleExport('docx')}
+                disabled={exporting}
+                className="w-full px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Download className="w-5 h-5" />
+                {exporting ? 'Exporting...' : 'Export as Word (Markdown)'}
+              </button>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="w-full px-4 py-2 text-slate-600 hover:text-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
