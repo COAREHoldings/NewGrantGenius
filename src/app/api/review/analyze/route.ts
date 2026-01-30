@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import pdf from 'pdf-parse';
 
 // NIH Review Criteria Sections
 const REVIEW_SECTIONS = [
@@ -242,10 +243,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
     
-    // For demo, we'll simulate document parsing
-    // In production, you'd use a PDF parsing library
+    // Parse PDF to extract text
     const arrayBuffer = await file.arrayBuffer();
-    const text = new TextDecoder().decode(arrayBuffer);
+    const buffer = Buffer.from(arrayBuffer);
+    
+    let text: string;
+    try {
+      const pdfData = await pdf(buffer);
+      text = pdfData.text;
+    } catch {
+      // Fallback for non-PDF or parsing errors
+      text = new TextDecoder().decode(arrayBuffer);
+    }
     
     // Detect grant type and extract title
     const grantType = detectGrantType(text);

@@ -3,7 +3,10 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { AuthProvider } from "@/lib/auth-context";
-import UserHeader from "@/components/UserHeader";
+import Header from "@/components/Header";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { ToastProvider } from "@/components/Toast";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,10 +28,15 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>
           <AuthProvider>
-            <UserHeader />
-            <main className="pt-0">
-              {children}
-            </main>
+            <ToastProvider>
+              <ErrorBoundary>
+                <UpgradePrompt />
+                <Header />
+                <main className="pt-0">
+                  {children}
+                </main>
+              </ErrorBoundary>
+            </ToastProvider>
           </AuthProvider>
         </Providers>
       </body>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { Loader2, Copy, Check, Mail } from 'lucide-react';
 import ExportMenu from '@/components/ExportMenu';
 
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function CoverLetterGen({ onGenerate, loading }: Props) {
+  const { checkDemoFeature } = useAuth();
   const [title, setTitle] = useState('');
   const [abstract, setAbstract] = useState('');
   const [journal, setJournal] = useState('');
@@ -18,6 +20,7 @@ export default function CoverLetterGen({ onGenerate, loading }: Props) {
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
+    if (!checkDemoFeature('AI Generation')) return;
     if (!title.trim() || !abstract.trim() || !journal.trim()) return;
     try {
       const result = await onGenerate(

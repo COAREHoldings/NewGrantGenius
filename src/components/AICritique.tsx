@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { 
   Sparkles, Check, X, Loader2, ChevronDown, ChevronUp, 
   AlertTriangle, CheckCircle, Star, RefreshCw, Copy,
@@ -45,6 +46,7 @@ interface AICritiqueProps {
 }
 
 export default function AICritique({ content, sectionType, grantType, onAcceptRewrite }: AICritiqueProps) {
+  const { checkDemoFeature } = useAuth();
   const [critique, setCritique] = useState<Critique | null>(null);
   const [rewrite, setRewrite] = useState<Rewrite | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +56,7 @@ export default function AICritique({ content, sectionType, grantType, onAcceptRe
   const [activeTab, setActiveTab] = useState<'critique' | 'rewrite'>('critique');
 
   const fetchCritique = async () => {
+    if (!checkDemoFeature('AI Generation')) return;
     if (!content || content.trim().length < 100) {
       setError('Please write at least 100 characters before requesting AI critique.');
       return;

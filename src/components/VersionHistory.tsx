@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { History, RotateCcw, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 
 interface Version {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function VersionHistory({ sectionId, currentContent, onRestore }: Props) {
+  const { checkDemoFeature } = useAuth();
   const [versions, setVersions] = useState<Version[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -44,6 +46,7 @@ export default function VersionHistory({ sectionId, currentContent, onRestore }:
   };
 
   const saveVersion = async () => {
+    if (!checkDemoFeature('Save Version')) return;
     try {
       await fetch('/api/versions', {
         method: 'POST',

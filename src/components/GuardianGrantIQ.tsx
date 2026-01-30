@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { 
   Sparkles, X, Send, Minimize2, Maximize2, 
   MessageSquare, Lightbulb, FileText, Target,
@@ -28,6 +29,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 ];
 
 export default function GuardianGrantIQ() {
+  const { checkDemoFeature } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -51,6 +53,7 @@ export default function GuardianGrantIQ() {
   }, [messages]);
 
   const sendMessage = async (content: string) => {
+    if (!checkDemoFeature('AI Generation')) return;
     if (!content.trim()) return;
 
     const userMessage: Message = {

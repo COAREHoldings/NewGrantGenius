@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { 
   BarChart3, CheckCircle2, XCircle, RefreshCw, 
   ChevronDown, ChevronRight, Sparkles, AlertTriangle,
@@ -41,6 +42,7 @@ const REVIEW_LEVELS = {
 };
 
 export default function StatisticalModeling({ applicationId }: { applicationId: number }) {
+  const { checkDemoFeature } = useAuth();
   const [aims, setAims] = useState<Aim[]>([]);
   const [models, setModels] = useState<StatModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,7 @@ export default function StatisticalModeling({ applicationId }: { applicationId: 
   };
 
   const generateModel = async (aim: Aim) => {
+    if (!checkDemoFeature('AI Generation')) return;
     setGenerating(aim.id);
     try {
       const res = await fetch('/api/submission/statistics/generate', {

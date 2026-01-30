@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { User, Loader2, Copy, Check, X, Download, FileText, Upload, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import ExportMenu from './ExportMenu';
 
@@ -24,6 +25,7 @@ interface VerificationResponse {
 }
 
 export default function BiosketchGenerator({ projectTitle, onClose, isOpen }: Props) {
+  const { checkDemoFeature } = useAuth();
   const [activeTab, setActiveTab] = useState<'generate' | 'verify'>('generate');
   const [formData, setFormData] = useState({
     name: '',
@@ -52,6 +54,7 @@ export default function BiosketchGenerator({ projectTitle, onClose, isOpen }: Pr
   };
 
   const generate = async () => {
+    if (!checkDemoFeature('AI Generation')) return;
     if (!formData.name || !formData.position) return;
     
     setLoading(true);

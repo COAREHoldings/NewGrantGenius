@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { Sparkles, Check, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Suggestion {
@@ -18,12 +19,14 @@ interface AISuggestionsProps {
 }
 
 export default function AISuggestions({ content, sectionType, grantType, onAccept }: AISuggestionsProps) {
+  const { checkDemoFeature } = useAuth();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
   const fetchSuggestions = async () => {
+    if (!checkDemoFeature('AI Generation')) return;
     if (!content || content.trim().length < 50) {
       setError('Please write at least 50 characters before requesting AI suggestions.');
       return;

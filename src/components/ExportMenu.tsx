@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, FileText, File, ExternalLink, Loader2, ChevronDown } from 'lucide-react';
+import { Download, FileText, File, ExternalLink, Loader2, ChevronDown, Lock } from 'lucide-react';
+import { useAuth, DEMO_RESTRICTED_FEATURES } from '@/lib/auth-context';
 
 export interface ExportSection {
   heading: string;
@@ -24,8 +25,16 @@ type ExportFormat = 'pdf' | 'docx' | 'gdocs';
 export default function ExportMenu({ title, sections, metadata, buttonClassName }: ExportMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const { isDemo, checkDemoFeature } = useAuth();
 
   const handleExport = async (format: ExportFormat) => {
+    // Check demo restriction
+    const feature = format === 'pdf' ? DEMO_RESTRICTED_FEATURES.EXPORT_PDF : DEMO_RESTRICTED_FEATURES.EXPORT_WORD;
+    if (!checkDemoFeature(feature)) {
+      setIsOpen(false);
+      return;
+    }
+
     setExporting(format);
     setIsOpen(false);
 
@@ -115,8 +124,11 @@ export default function ExportMenu({ title, sections, metadata, buttonClassName 
                 className="w-full px-4 py-3 flex items-start gap-3 hover:bg-slate-50 transition text-left"
               >
                 <format.icon className="w-5 h-5 text-slate-600 mt-0.5" />
-                <div>
-                  <div className="font-medium text-slate-900">{format.label}</div>
+                <div className="flex-1">
+                  <div className="font-medium text-slate-900 flex items-center gap-2">
+                    {format.label}
+                    {isDemo && <Lock className="w-3 h-3 text-amber-500" />}
+                  </div>
                   <div className="text-xs text-slate-500">{format.description}</div>
                 </div>
               </button>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { Target, Loader2, AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Recommendation {
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function StudySectionRecommender({ title, specificAims, researchStrategy }: Props) {
+  const { checkDemoFeature } = useAuth();
   const [result, setResult] = useState<StudySectionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export default function StudySectionRecommender({ title, specificAims, researchS
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
 
   const analyze = async () => {
+    if (!checkDemoFeature('AI Generation')) return;
     if (!specificAims && !researchStrategy) {
       setError('Please complete Specific Aims or Research Strategy sections first.');
       return;

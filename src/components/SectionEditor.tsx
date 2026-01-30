@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/lib/auth-context';
 import { CheckCircle, AlertCircle, FileText, AlertTriangle, Plus, Trash2, GripVertical, Upload, ImageIcon, BarChart3 } from 'lucide-react';
 import AISuggestions from './AISuggestions';
 import AICritique from './AICritique';

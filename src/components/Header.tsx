@@ -1,22 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, User, Menu, X, Home, Rocket, Search, FileSpreadsheet, RefreshCw, Library, HelpCircle } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { LogOut, User, Menu, X, Home, Rocket, Search, FileSpreadsheet, RefreshCw, Library, HelpCircle, FileSearch, Mail, Shield, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: Home },
   { href: '/submission', label: 'Ready To Grant', icon: Rocket, highlight: true },
+  { href: '/review', label: 'Review & Score', icon: FileSearch },
   { href: '/grants', label: 'Grant Discovery', icon: Search },
   { href: '/budget', label: 'Budget Tool', icon: FileSpreadsheet },
+  { href: '/letters', label: 'Letters', icon: Mail },
   { href: '/resubmission', label: 'Resubmission', icon: RefreshCw },
-  { href: '/publications', label: 'Publications', icon: Library },
 ];
 
 export default function Header() {
-  const { user, logout } = useAuth();
+  const { user, isDemo, signOut, aiCallsRemaining } = useAuth();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -65,6 +66,11 @@ export default function Header() {
               <span className="hidden lg:inline">NIH Guide</span>
             </a>
             
+            {isDemo && (
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                <Sparkles className="w-3 h-3" /> Demo
+              </span>
+            )}
             {user && (
               <div className="hidden sm:flex items-center gap-3">
                 <div className="flex items-center gap-2 text-sm text-slate-600 px-3 py-1.5 bg-slate-100 rounded-full">
@@ -72,7 +78,7 @@ export default function Header() {
                   <span className="hidden lg:inline">{user.name}</span>
                 </div>
                 <button
-                  onClick={logout}
+                  onClick={signOut}
                   className="flex items-center gap-2 text-sm text-slate-500 hover:text-red-600 transition"
                 >
                   <LogOut className="w-4 h-4" />
@@ -118,14 +124,21 @@ export default function Header() {
             </nav>
             
             {user && (
-              <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <User className="w-4 h-4" />
-                  {user.name}
+              <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col gap-3">
+                {isDemo && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full w-fit">
+                    <Sparkles className="w-3 h-3" /> Demo Mode
+                  </span>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <User className="w-4 h-4" />
+                    {user.name}
+                  </div>
+                  <button onClick={signOut} className="text-sm text-red-600 flex items-center gap-2">
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
                 </div>
-                <button onClick={logout} className="text-sm text-red-600 flex items-center gap-2">
-                  <LogOut className="w-4 h-4" /> Sign Out
-                </button>
               </div>
             )}
           </div>
