@@ -63,9 +63,36 @@ export async function POST(request: NextRequest) {
         const docType = detectDocumentType(file.name);
         const mappedSection = mapToSection(docType);
 
-        // In production, you would upload to Supabase Storage here
-        // For now, we just track the metadata
-        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const storagePath = `${applicationId}/${timestamp}_${safeName}`;
+
+        // Convert File to ArrayBuffer then to Uint8Array for upload
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        // Upload to Supabase Storage
+        const { data: storageData, error: storageError } = await supabase.storage
+          .from('attachments')
+          .upload(storagePath, uint8Array, {
+            contentType: file.type || 'application/octet-stream',
+            upsert: false
+          });
+
+        if (storageError) {
+          console.error('Storage upload error:', storageError);
+          throw new Error(`Failed to upload file: ${storageError.message}`);
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('attachments')
+          .getPublicUrl(storagePath);
+
+        const fileUrl = urlData.publicUrl;
+
+        // Save metadata to database
         const { data, error } = await supabase
           .from('document_uploads')
           .insert({
@@ -73,6 +100,7 @@ export async function POST(request: NextRequest) {
             document_type: docType,
             original_filename: file.name,
             file_size: file.size,
+            file_url: fileUrl,
             audit_status: 'pending',
             mapped_to_section: mappedSection
           })
@@ -96,6 +124,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ uploads });
   } catch (error) {
     console.error('Error processing upload:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Upload failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
