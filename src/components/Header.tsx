@@ -13,6 +13,7 @@ const navItems = [
   { href: '/grants', label: 'Grant Discovery', icon: Search },
   { href: '/budget', label: 'Budget Tool', icon: FileSpreadsheet },
   { href: '/letters', label: 'Letters', icon: Mail },
+  { href: '/publications', label: 'Publications', icon: Library },
   { href: '/resubmission', label: 'Resubmission', icon: RefreshCw },
 ];
 
